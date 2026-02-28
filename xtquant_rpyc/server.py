@@ -217,7 +217,23 @@ class XtQuantService(rpyc.Service):
     def on_connect(self, conn):
         self._conn = conn
         self._authenticated = False
-        self._client_info = f"{conn.peer}"
+        # 兼容不同版本 rpyc：尝试获取客户端地址
+        try:
+            # 新版本 rpyc
+            if hasattr(conn, 'peer'):
+                self._client_info = f"{conn.peer}"
+            # 旧版本 rpyc：从 channel 获取
+            elif hasattr(conn, '_channel') and hasattr(conn._channel, 'stream'):
+                stream = conn._channel.stream
+                if hasattr(stream, 'sock'):
+                    peer = stream.sock.getpeername()
+                    self._client_info = f"{peer[0]}:{peer[1]}"
+                else:
+                    self._client_info = "unknown"
+            else:
+                self._client_info = "unknown"
+        except Exception:
+            self._client_info = "unknown"
         self._token = None
         logger.info(f"[连接] 客户端接入: {self._client_info}")
     
