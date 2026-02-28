@@ -238,10 +238,11 @@ class XtQuantService(rpyc.Service):
         logger.info(f"[连接] 客户端接入: {self._client_info}")
     
     def on_disconnect(self, conn):
-        logger.info(f"[断开] 客户端离开: {self._client_info}")
-        if self._token and self._token in self._tokens:
+        client_info = getattr(self, '_client_info', 'unknown')
+        logger.info(f"[断开] 客户端离开: {client_info}")
+        if hasattr(self, '_token') and self._token and self._token in self._tokens:
             del self._tokens[self._token]
-        callback_manager.clear_client_callbacks(self._client_info)
+        callback_manager.clear_client_callbacks(client_info)
     
     def _generate_token(self, client_id):
         timestamp = str(int(time.time()))
