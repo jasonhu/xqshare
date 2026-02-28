@@ -1,0 +1,627 @@
+"""
+XtQuant RPyC Client - Transparent remote proxy for xtquant
+"""
+
+import os
+import rpyc
+import time
+import threading
+import ssl
+import logging
+import functools
+from typing import Any, Callable, Dict, List
+from datetime import datetime
+
+
+# ==================== 日志配置 ====================
+
+def setup_logging(log_level: str = "INFO"):
+    """配置客户端日志"""
+    
+    log_dir = os.path.expanduser("~/.xtquant/logs")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    formatter = logging.Formatter(
+        fmt='%(asctime)s.%(msecs)03d | %(levelname)-8s | %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    root_logger = logging.getLogger('xtquant_client')
+    root_logger.setLevel(getattr(logging, log_level.upper()))
+    
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
+    root_logger.addHandler(console_handler)
+    
+    file_handler = logging.FileHandler(
+        os.path.join(log_dir, f"client_{datetime.now().strftime('%Y%m%d')}.log"),
+        encoding='utf-8'
+    )
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
+    root_logger.addHandler(file_handler)
+    
+    return root_logger
+
+
+_logger = None
+
+def get_logger():
+    global _logger
+    if _logger is None:
+        _logger = setup_logging()
+    return _logger
+
+
+# ==================== 异常定义 ====================
+
+class ConnectionError(Exception):
+    """连接错误"""
+    pass
+
+
+class AuthenticationError(Exception):
+    """认证错误"""
+    pass
+
+
+class CallbackError(Exception):
+    """回调错误"""
+    pass
+
+
+# ==================== 重连策略 ====================
+
+class ReconnectPolicy:
+    """重连策略"""
+    
+    def __init__(self, max_retries=5, base_delay=1, max_delay=30, backoff_factor=2):
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+        self.max_delay = max_delay
+        self.backoff_factor = backoff_factor
+    
+    def get_delay(self, retry_count):
+        delay = self.base_delay * (self.backoff_factor ** retry_count)
+        return min(delay, self.max_delay)
+
+
+# ==================== 回调服务器 ====================
+
+class CallbackServer:
+    """回调服务器：接收服务端的回调调用"""
+    
+    def __init__(self, port=0, host="0.0.0.0"):
+        self._host = host
+        self._port = port
+        self._server = None
+        self._thread = None
+        self._callbacks: Dict[str, Callable] = {}
+        self._running = False
+        self._logger = get_logger()
+    
+    def start(self):
+        if self._running:
+            return
+        
+        # Create a service class that references this callback server
+        callback_server = self
+        
+        class CallbackService(rpyc.Service):
+            def exposed_invoke(self, callback_id: str, *args, **kwargs):
+                return callback_server._invoke_callback(callback_id, *args, **kwargs)
+        
+        from rpyc.utils.server import ThreadedServer
+        
+        # Get available port first
+        if self._port == 0:
+            import socket
+            with socket.socket() as s:
+                s.bind(('', 0))
+                self._port = s.getsockname()[1]
+        
+        self._server = ThreadedServer(
+            CallbackService,
+            hostname=self._host,
+            port=self._port,
+            protocol_config={
+                'allow_public_attrs': True,
+                'allow_pickle': True,
+            }
+        )
+        
+        self._running = True
+        self._thread = threading.Thread(target=self._server.start, daemon=True)
+        self._thread.start()
+        
+        self._logger.info(f"回调服务器启动: port={self._port}")
+    
+    def stop(self):
+        if self._server and self._running:
+            self._server.close()
+            self._running = False
+            self._logger.info("回调服务器已停止")
+    
+    def register(self, callback_id: str, callback: Callable):
+        self._callbacks[callback_id] = callback
+        self._logger.debug(f"注册回调: {callback_id}")
+    
+    def unregister(self, callback_id: str):
+        if callback_id in self._callbacks:
+            del self._callbacks[callback_id]
+            self._logger.debug(f"注销回调: {callback_id}")
+    
+    def _invoke_callback(self, callback_id: str, *args, **kwargs):
+        callback = self._callbacks.get(callback_id)
+        if callback:
+            try:
+                return callback(*args, **kwargs)
+            except Exception as e:
+                self._logger.error(f"回调执行失败: {callback_id} | error={e}")
+                raise
+        else:
+            self._logger.warning(f"回调不存在: {callback_id}")
+            raise CallbackError(f"Callback not found: {callback_id}")
+    
+    def get_port(self):
+        return self._port
+
+
+# ==================== 远程模块代理 ====================
+
+class RemoteModule:
+    """远程模块代理 - 完全透明的动态代理"""
+    
+    def __init__(self, client, module_name):
+        self._client = client
+        self._module_name = module_name
+        self._module = None
+        self._logger = get_logger()
+    
+    def _ensure_module(self):
+        if self._module is None:
+            self._client._ensure_connected()
+            try:
+                method = getattr(self._client._conn.root, f'get_{self._module_name}')
+                self._module = method(self._client._token)
+            except Exception as e:
+                self._module = None
+                raise
+        return self._module
+    
+    def __getattr__(self, name):
+        module = self._ensure_module()
+        try:
+            attr = getattr(module, name)
+            if callable(attr):
+                return self._wrap_call(attr, name)
+            return attr
+        except Exception as e:
+            if self._client._should_reconnect(e):
+                self._module = None
+                module = self._ensure_module()
+                attr = getattr(module, name)
+                if callable(attr):
+                    return self._wrap_call(attr, name)
+                return attr
+            raise
+    
+    def _wrap_call(self, func, func_name: str):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.perf_counter()
+            args_str = self._summarize_args(args, kwargs)
+            self._logger.debug(f"[CALL] {self._module_name}.{func_name}({args_str})")
+            
+            try:
+                result = func(*args, **kwargs)
+                elapsed_ms = (time.perf_counter() - start_time) * 1000
+                result_summary = self._summarize_result(result)
+                self._logger.info(f"[OK] {self._module_name}.{func_name} | {elapsed_ms:.2f}ms | {result_summary}")
+                return result
+            except Exception as e:
+                elapsed_ms = (time.perf_counter() - start_time) * 1000
+                self._logger.error(f"[ERROR] {self._module_name}.{func_name} | {elapsed_ms:.2f}ms | {type(e).__name__}: {e}")
+                raise
+        
+        return wrapper
+    
+    def _summarize_args(self, args, kwargs, max_len: int = 100) -> str:
+        parts = []
+        if args:
+            for arg in args[:3]:
+                try:
+                    s = str(arg)[:30]
+                    parts.append(s)
+                except:
+                    parts.append("?")
+            if len(args) > 3:
+                parts.append(f"...+{len(args)-3}")
+        if kwargs:
+            for k, v in list(kwargs.items())[:2]:
+                try:
+                    s = f"{k}={str(v)[:20]}"
+                    parts.append(s)
+                except:
+                    parts.append(f"{k}=?")
+            if len(kwargs) > 2:
+                parts.append(f"...+{len(kwargs)-2}")
+        return ", ".join(parts)[:max_len]
+    
+    def _summarize_result(self, result, max_len: int = 100) -> str:
+        try:
+            if result is None:
+                return "None"
+            elif isinstance(result, (int, float, bool)):
+                return str(result)
+            elif isinstance(result, str):
+                return result[:max_len] if len(result) > max_len else result
+            elif isinstance(result, (list, tuple)):
+                return f"{type(result).__name__}[len={len(result)}]"
+            elif isinstance(result, dict):
+                return f"dict[{len(result)} keys]"
+            else:
+                return f"<{type(result).__name__}>"
+        except:
+            return "?"
+    
+    def __dir__(self):
+        module = self._ensure_module()
+        return dir(module)
+
+
+# ==================== 行情订阅管理 ====================
+
+class QuoteSubscription:
+    """行情订阅管理"""
+    
+    def __init__(self, client, stock_code: str, callback: Callable):
+        self._client = client
+        self._stock_code = stock_code
+        self._callback = callback
+        self._callback_id = f"quote_{stock_code}_{id(self)}"
+        self._active = False
+        self._logger = get_logger()
+    
+    def start(self):
+        if self._active:
+            return
+        self._client._callback_server.register(self._callback_id, self._callback)
+        self._client._conn.root.subscribe_quote(self._stock_code, self._callback_id)
+        self._active = True
+        self._logger.info(f"订阅行情: {self._stock_code}")
+    
+    def stop(self):
+        if not self._active:
+            return
+        self._client._conn.root.unsubscribe_quote(self._stock_code)
+        self._client._callback_server.unregister(self._callback_id)
+        self._active = False
+        self._logger.info(f"取消订阅: {self._stock_code}")
+    
+    def __enter__(self):
+        self.start()
+        return self
+    
+    def __exit__(self, *args):
+        self.stop()
+
+
+# ==================== 主客户端类 ====================
+
+class XtQuantRemote:
+    """
+    远程 xtquant 完全透明代理
+    
+    功能：
+    - 自动认证
+    - 断线自动重连
+    - SSL 加密（可选）
+    - 异步回调支持
+    - API调用日志
+    
+    使用示例:
+        xt = XtQuantRemote("192.168.1.100")
+        stocks = xt.xtdata.get_stock_list_in_sector("沪深A股")
+        xt.close()
+        
+        with XtQuantRemote("192.168.1.100") as xt:
+            df = xt.xtdata.get_market_data(["000001.SZ"])
+    """
+    
+    def __init__(
+        self,
+        host="localhost",
+        port=18812,
+        client_id=None,
+        client_secret=None,
+        use_ssl=False,
+        ssl_verify=True,
+        auto_reconnect=True,
+        max_retries=5,
+        heartbeat_interval=30,
+        log_level="INFO",
+        callback_port=0,
+    ):
+        self._host = host
+        self._port = port
+        self._client_id = client_id or "default"
+        self._client_secret = client_secret or ""
+        self._use_ssl = use_ssl
+        self._ssl_verify = ssl_verify
+        self._auto_reconnect = auto_reconnect
+        self._reconnect_policy = ReconnectPolicy(max_retries=max_retries)
+        self._heartbeat_interval = heartbeat_interval
+        self._log_level = log_level
+        self._callback_port = callback_port
+        
+        self._conn = None
+        self._token = None
+        self._connected = False
+        self._reconnecting = False
+        self._heartbeat_thread = None
+        self._stop_heartbeat = threading.Event()
+        self._subscriptions: List[QuoteSubscription] = []
+        
+        self._callback_server = None
+        self._xtdata = RemoteModule(self, 'xtdata')
+        self._xttrader = RemoteModule(self, 'xttrader')
+        self._logger = get_logger()
+        
+        self._connect()
+    
+    def _should_reconnect(self, error):
+        if not self._auto_reconnect:
+            return False
+        error_str = str(error).lower()
+        hints = ['connection', 'closed', 'reset', 'broken', 'timeout', 'refused', 'eof', 'socket']
+        return any(h in error_str for h in hints)
+    
+    def _create_ssl_context(self):
+        if not self._use_ssl:
+            return None
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        if self._ssl_verify:
+            ctx.verify_mode = ssl.CERT_REQUIRED
+            ctx.check_hostname = True
+        else:
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    
+    def _connect(self):
+        config = {
+            'allow_public_attrs': True,
+            'allow_pickle': True,
+            'allow_getattr': True,
+            'allow_setattr': True,
+            'allow_delattr': True,
+            'allow_all_attrs': True,
+            'sync_request_timeout': 300,
+        }
+        
+        ssl_context = self._create_ssl_context()
+        
+        try:
+            self._conn = rpyc.connect(self._host, self._port, config=config, ssl_context=ssl_context)
+            self._connected = True
+            self._start_callback_server()
+            
+            if self._client_secret:
+                self._token = self._conn.root.authenticate(self._client_id, self._client_secret)
+                self._logger.info(f"认证成功: client_id={self._client_id}")
+            
+            if self._heartbeat_interval > 0:
+                self._start_heartbeat()
+            
+            self._logger.info(f"连接成功: {self._host}:{self._port}")
+        except Exception as e:
+            self._connected = False
+            raise ConnectionError(f"连接失败: {e}")
+    
+    def _start_callback_server(self):
+        if self._callback_server is None:
+            self._callback_server = CallbackServer(port=self._callback_port)
+        self._callback_server.start()
+    
+    def _ensure_connected(self):
+        if self._connected and self._conn:
+            return
+        if not self._auto_reconnect:
+            raise ConnectionError("连接已断开，自动重连已禁用")
+        self._reconnect()
+    
+    def _reconnect(self):
+        if self._reconnecting:
+            for _ in range(10):
+                time.sleep(0.5)
+                if self._connected:
+                    return
+            raise ConnectionError("重连超时")
+        
+        self._reconnecting = True
+        retry_count = 0
+        
+        try:
+            while retry_count < self._reconnect_policy.max_retries:
+                try:
+                    self._logger.info(f"重连中... 第 {retry_count + 1} 次尝试")
+                    
+                    if self._conn:
+                        try:
+                            self._conn.close()
+                        except:
+                            pass
+                    
+                    self._conn = None
+                    self._connected = False
+                    self._token = None
+                    self._connect()
+                    
+                    for sub in self._subscriptions:
+                        if sub._active:
+                            try:
+                                sub.start()
+                            except:
+                                pass
+                    
+                    self._logger.info("重连成功")
+                    return
+                except Exception as e:
+                    retry_count += 1
+                    delay = self._reconnect_policy.get_delay(retry_count - 1)
+                    self._logger.warning(f"重连失败: {e}，{delay}秒后重试...")
+                    time.sleep(delay)
+            
+            raise ConnectionError(f"重连失败，已尝试 {retry_count} 次")
+        finally:
+            self._reconnecting = False
+    
+    def _start_heartbeat(self):
+        if self._heartbeat_thread and self._heartbeat_thread.is_alive():
+            return
+        self._stop_heartbeat.clear()
+        self._heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
+        self._heartbeat_thread.start()
+    
+    def _heartbeat_loop(self):
+        while not self._stop_heartbeat.is_set():
+            try:
+                if self._connected and self._conn:
+                    try:
+                        result = self._conn.root.ping()
+                        if result == "pong" and self._token:
+                            self._conn.root.heartbeat(self._token)
+                    except Exception as e:
+                        if self._auto_reconnect:
+                            self._logger.warning(f"心跳失败: {e}，尝试重连...")
+                            try:
+                                self._reconnect()
+                            except:
+                                pass
+            except Exception:
+                pass
+            self._stop_heartbeat.wait(self._heartbeat_interval)
+    
+    def _stop_heartbeat_thread(self):
+        self._stop_heartbeat.set()
+        if self._heartbeat_thread:
+            self._heartbeat_thread.join(timeout=2)
+    
+    # ==================== 公共接口 ====================
+    
+    @property
+    def xtdata(self):
+        return self._xtdata
+    
+    @property
+    def xttrader(self):
+        return self._xttrader
+    
+    def create_trader(self):
+        self._ensure_connected()
+        return self._conn.root.create_trader(self._token)
+    
+    def get_all_stocks(self):
+        self._ensure_connected()
+        return self._conn.root.get_all_stocks(self._token)
+    
+    def get_index_list(self):
+        self._ensure_connected()
+        return self._conn.root.get_index_list(self._token)
+    
+    def subscribe_quote(self, stock_code: str, callback: Callable[[str, dict], None]) -> QuoteSubscription:
+        self._ensure_connected()
+        sub = QuoteSubscription(self, stock_code, callback)
+        self._subscriptions.append(sub)
+        sub.start()
+        return sub
+    
+    def unsubscribe_all(self):
+        for sub in self._subscriptions:
+            try:
+                sub.stop()
+            except:
+                pass
+        self._subscriptions.clear()
+    
+    def get_market_data_batch(self, stock_list: list, period: str = "1d",
+                               start_time: str = "", end_time: str = ""):
+        self._ensure_connected()
+        return self._conn.root.get_market_data_batch(stock_list, period, start_time, end_time)
+    
+    def get_full_tick_batch(self, stock_list: list):
+        self._ensure_connected()
+        return self._conn.root.get_full_tick_batch(stock_list)
+    
+    def is_connected(self):
+        return self._connected
+    
+    def get_service_status(self):
+        self._ensure_connected()
+        return self._conn.root.get_service_status(self._token)
+    
+    def reconnect(self):
+        self._reconnect()
+    
+    def close(self):
+        self.unsubscribe_all()
+        self._stop_heartbeat_thread()
+        if self._callback_server:
+            self._callback_server.stop()
+        self._connected = False
+        if self._conn:
+            try:
+                self._conn.close()
+            except:
+                pass
+        self._conn = None
+        self._logger.info("连接已关闭")
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, *args):
+        self.close()
+    
+    def __repr__(self):
+        status = "已连接" if self._connected else "已断开"
+        ssl_status = "SSL" if self._use_ssl else "明文"
+        return f"<XtQuantRemote {self._host}:{self._port} [{status}] [{ssl_status}]>"
+
+
+# ==================== 全局便捷函数 ====================
+
+_global_client = None
+
+def connect(host="localhost", port=18812, **kwargs):
+    """创建全局连接"""
+    global _global_client
+    _global_client = XtQuantRemote(host, port, **kwargs)
+    return _global_client
+
+def disconnect():
+    """断开全局连接"""
+    global _global_client
+    if _global_client:
+        _global_client.close()
+        _global_client = None
+
+def get_client():
+    """获取全局客户端"""
+    return _global_client
+
+
+class _ModuleProxy:
+    def __init__(self, name):
+        self._name = name
+    
+    def __getattr__(self, attr):
+        if _global_client is None:
+            raise RuntimeError("请先调用 connect() 建立连接")
+        return getattr(getattr(_global_client, self._name), attr)
+
+
+xtdata = _ModuleProxy('xtdata')
+xttrader = _ModuleProxy('xttrader')

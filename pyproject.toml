@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xtquant-rpyc"
+version = "1.0.0"
+description = "Transparent remote proxy for xtquant library - use xtquant on macOS/Linux via Windows server"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "Jason Hu", email = "your-email@example.com"}
+]
+keywords = [
+    "xtquant",
+    "rpyc", 
+    "remote",
+    "proxy",
+    "quant",
+    "stock",
+    "trading",
+    "qmt",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Networking",
+]
+dependencies = [
+    "rpyc>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+    "flake8>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/xtquant-rpyc"
+Documentation = "https://github.com/yourusername/xtquant-rpyc#readme"
+Repository = "https://github.com/yourusername/xtquant-rpyc"
+Issues = "https://github.com/yourusername/xtquant-rpyc/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["xtquant_rpyc*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.md", "*.txt"]
