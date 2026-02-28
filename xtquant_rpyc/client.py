@@ -404,7 +404,20 @@ class XtQuantRemote:
         ssl_context = self._create_ssl_context()
         
         try:
-            self._conn = rpyc.connect(self._host, self._port, config=config, ssl_context=ssl_context)
+            # 尝试新版本 rpyc API
+            try:
+                self._conn = rpyc.connect(self._host, self._port, config=config, ssl_context=ssl_context)
+            except TypeError:
+                # 旧版本 rpyc 不支持 ssl_context 参数
+                if ssl_context and self._use_ssl:
+                    # 使用 SSL 包装 socket
+                    import socket
+                    sock = socket.create_connection((self._host, self._port))
+                    sock = ssl_context.wrap_socket(sock, server_hostname=self._host)
+                    self._conn = rpyc.connect_stream(sock, config=config)
+                else:
+                    self._conn = rpyc.connect(self._host, self._port, config=config)
+            
             self._connected = True
             self._start_callback_server()
             
