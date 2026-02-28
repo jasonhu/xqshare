@@ -423,13 +423,36 @@ def start_server(host="0.0.0.0", port=18812, use_ssl=False, certfile=None, keyfi
             logger.warning("SSL 证书加载失败")
             print("  ⚠ SSL 证书加载失败")
     
-    server = ThreadedServer(
-        XtQuantService,
-        hostname=host,
-        port=port,
-        protocol_config=config,
-        ssl_context=ssl_context,
-    )
+    # 构建 ThreadedServer 参数（兼容不同 rpyc 版本）
+    server_kwargs = {
+        'hostname': host,
+        'port': port,
+        'protocol_config': config,
+    }
+    
+    # 尝试使用 ssl_context（新版本 rpyc）
+    try:
+        server = ThreadedServer(XtQuantService, ssl_context=ssl_context, **server_kwargs)
+    except TypeError:
+        # 旧版本 rpyc 不支持 ssl_context，使用其他方式
+        if ssl_context:
+            # 对于旧版本，通过 protocol_config 传递 SSL
+            import socket
+            import ssl as ssl_module
+            
+            # 创建 SSL 包装的 socket
+            class SSLThreadedServer(ThreadedServer):
+                def _accept_method(self, sock):
+                    try:
+                        return ssl_context.wrap_socket(sock, server_side=True)
+                    except Exception as e:
+                        logger.error(f"SSL 包装失败: {e}")
+                        raise
+            
+            server = SSLThreadedServer(XtQuantService, **server_kwargs)
+            logger.info("使用兼容模式启动 SSL")
+        else:
+            server = ThreadedServer(XtQuantService, **server_kwargs)
     
     print("\n  服务已启动，等待客户端连接...")
     print("  按 Ctrl+C 停止服务\n")
