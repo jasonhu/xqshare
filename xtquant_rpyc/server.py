@@ -208,29 +208,48 @@ class AuthError(Exception):
 
 # ==================== 模块代理（带日志） ====================
 
-class LoggingModuleProxy:
-    """模块代理：拦截所有方法调用并记录日志"""
+class LoggingProxy:
+    """通用代理：拦截模块/对象的方法调用并记录日志，支持递归包装返回对象"""
 
-    def __init__(self, module, module_name: str, client_info_getter):
-        self._module = module
-        self._module_name = module_name
-        self._get_client_info = client_info_getter
+    def __init__(self, target, target_name: str, client_info_getter):
+        object.__setattr__(self, '_target', target)
+        object.__setattr__(self, '_target_name', target_name)
+        object.__setattr__(self, '_get_client_info', client_info_getter)
 
     def __getattr__(self, name):
-        attr = getattr(self._module, name)
+        target = object.__getattribute__(self, '_target')
+        target_name = object.__getattribute__(self, '_target_name')
+        get_client_info = object.__getattribute__(self, '_get_client_info')
+
+        attr = getattr(target, name)
 
         # 如果是可调用对象，包装成带日志的版本
         if callable(attr):
             def wrapper(*args, **kwargs):
-                full_name = f"{self._module_name}.{name}"
-                return _log_call(full_name, self._get_client_info(), attr, *args, **kwargs)
+                full_name = f"{target_name}.{name}"
+                result = _log_call(full_name, get_client_info(), attr, *args, **kwargs)
+                # 如果返回的是复杂对象，递归包装
+                if result is not None and hasattr(result, '__class__'):
+                    if not isinstance(result, (int, float, str, bool, list, dict, tuple, type(None), bytes)):
+                        if not result.__class__.__module__.startswith('builtins'):
+                            return LoggingProxy(result, full_name, get_client_info)
+                return result
             wrapper.__name__ = name
             return wrapper
 
         return attr
 
+    def __setattr__(self, name, value):
+        return setattr(object.__getattribute__(self, '_target'), name, value)
+
     def __dir__(self):
-        return dir(self._module)
+        return dir(object.__getattribute__(self, '_target'))
+
+    def __repr__(self):
+        return repr(object.__getattribute__(self, '_target'))
+
+# 兼容别名
+LoggingModuleProxy = LoggingProxy
 
 
 # ==================== 服务类 ====================
