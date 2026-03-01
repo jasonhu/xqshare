@@ -14,15 +14,16 @@ def main():
     parser = argparse.ArgumentParser(description="测试 RPyC 异步回调")
     parser.add_argument("--host", required=True, help="服务端地址")
     parser.add_argument("--port", type=int, default=18812, help="服务端端口")
-    parser.add_argument("--delay", type=float, default=2.0, help="回调延迟秒数")
+    parser.add_argument("--delay", type=float, default=2.0, help="回调间隔秒数")
+    parser.add_argument("--count", type=int, default=5, help="回调次数")
 
     args = parser.parse_args()
 
     # 定义回调函数
     def my_callback(message: str) -> str:
         timestamp = time.strftime("%H:%M:%S")
-        print(f"[{timestamp}] 收到异步回调: {message}")
-        return "客户端已收到"
+        print(f"[{timestamp}] {message}")
+        return "OK"
 
     config = {
         'allow_public_attrs': True,
@@ -38,16 +39,18 @@ def main():
     conn = rpyc.connect(args.host, args.port, config=config)
 
     try:
-        print(f"发起异步回调测试，延迟 {args.delay} 秒...")
-        print(f"等待回调中...\n")
+        print(f"发起异步回调测试...")
+        print(f"  间隔: {args.delay} 秒")
+        print(f"  次数: {args.count} 次")
+        print(f"\n等待回调中...\n")
 
         # 直接调用服务端方法，传递回调函数
-        result = conn.root.test_async_callback(my_callback, args.delay)
-        print(f"服务端返回: {result}")
+        result = conn.root.test_async_callback(my_callback, args.delay, args.count)
+        print(f"服务端返回: {result}\n")
 
-        # 等待回调执行
-        wait_time = args.delay + 2
-        print(f"\n等待 {wait_time} 秒观察回调...")
+        # 等待所有回调执行完成
+        wait_time = args.delay * args.count + 2
+        print(f"等待 {wait_time} 秒观察回调...\n")
         time.sleep(wait_time)
 
         print("\n测试完成！")
