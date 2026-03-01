@@ -110,7 +110,7 @@ def log_api_call(func_name: str = None):
         def wrapper(self, *args, **kwargs):
             name = func_name or func.__name__
             client_info = getattr(self, '_client_info', 'unknown')
-            return _log_call(name, client_info, func, *args, **kwargs)
+            return _log_call(name, client_info, func, self, *args, **kwargs)
         return wrapper
     return decorator
 
