@@ -86,21 +86,37 @@ K线周期 (period):
         print(f"  日期范围: {args.start} ~ {args.end}")
         print()
 
-        # 使用 download_history_data2 批量下载
-        # 注意：下载是异步的，调用后立即返回
-        xt.xtdata.download_history_data2(
+        # 定义进度回调
+        def on_progress(data):
+            finished = data.get('finished', 0)
+            total = data.get('total', 0)
+            if total > 0:
+                percent = finished / total * 100
+                print(f"\r  下载进度: {finished}/{total} ({percent:.1f}%)", end="", flush=True)
+
+        # download_history_data2 是同步阻塞的，会等待下载完成
+        result = xt.xtdata.download_history_data2(
             stock_list=stock_codes,
             period=args.period,
             start_time=args.start,
-            end_time=args.end
+            end_time=args.end,
+            callback=on_progress
         )
 
-        print(f"下载任务已提交！")
-        print()
-        print("说明:")
-        print("  1. 数据下载是异步的，需要等待一段时间")
-        print("  2. 下载完成后，可使用 get_market_data 或 get_market_data_ex 获取数据")
-        print("  3. 如果是首次下载，可能需要较长时间")
+        print()  # 换行
+
+        # 显示下载结果
+        if result:
+            print(f"\n下载完成！")
+            print(f"{'='*60}")
+            for stock_code, info in result.items():
+                start_time = info.get('start_time', 'N/A')
+                end_time = info.get('end_time', 'N/A')
+                print(f"  {stock_code}: {start_time} ~ {end_time}")
+            print(f"{'='*60}")
+        else:
+            print(f"\n下载完成！（无返回数据）")
+
         print()
         print("验证数据:")
         print(f"  python examples/get_market_data_ex.py --host {args.host} --codes \"{args.codes}\" --period {args.period}")
