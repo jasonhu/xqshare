@@ -49,9 +49,12 @@ def main():
         print(f"服务端返回: {result}\n")
 
         # 等待所有回调执行完成
+        # 注意：不能用 time.sleep()，否则无法处理传入的回调
+        # 需要用小间隔循环，让 RPyC 有机会处理传入消息
         wait_time = args.delay * args.count + 2
         print(f"等待 {wait_time} 秒观察回调...\n")
-        time.sleep(wait_time)
+        for _ in range(int(wait_time * 10)):
+            time.sleep(0.1)  # 小间隔，让 RPyC 处理回调
 
         print("\n测试完成！")
 
