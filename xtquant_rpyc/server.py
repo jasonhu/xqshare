@@ -424,6 +424,38 @@ class XtQuantService(rpyc.Service):
     def exposed_get_full_tick_batch(self, stock_list: list):
         return self._xtdata.get_full_tick(stock_list)
     
+    @log_api_call("download_history_data2")
+    def exposed_download_history_data2(self, stock_list: list, period: str = "1d",
+                                        start_time: str = "", end_time: str = "", incrementally: bool = None):
+        """
+        下载历史数据（服务端封装，避免回调传输问题）
+        返回: {'finished': n, 'total': n, 'result': {...}}
+        """
+        status = {'finished': 0, 'total': 0, 'done': False, 'result': {}, 'message': ''}
+
+        def on_progress(data):
+            status['finished'] = data.get('finished', 0)
+            status['total'] = data.get('total', 0)
+            status['done'] = status['finished'] >= status['total']
+            status['message'] = data.get('message', '')
+            if 'result' in data:
+                import datetime as dt
+                from xtquant import xtbson as bson
+                regino_result = bson.BSON.decode(data.get('result'))
+                for stock, info in regino_result.items():
+                    info['start_time'] = str(dt.datetime.fromtimestamp(info.get('start_time') / 1000))
+                    info['end_time'] = str(dt.datetime.fromtimestamp(info.get('end_time') / 1000))
+                    status['result'][stock] = info
+
+        # 调用原始方法（incrementally 参数需要转换为 None 或 bool）
+        inc = incrementally
+        self._xtdata.download_history_data2(
+            stock_list, period, start_time, end_time,
+            callback=on_progress, incrementally=inc
+        )
+
+        return status
+
     @log_api_call("get_financial_data")
     def exposed_get_financial_data(self, stock_list: list, table_list: list = None,
                                    start_time: str = "", end_time: str = ""):

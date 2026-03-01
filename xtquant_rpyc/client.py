@@ -573,7 +573,17 @@ class XtQuantRemote:
     def get_full_tick_batch(self, stock_list: list):
         self._ensure_connected()
         return self._conn.root.get_full_tick_batch(stock_list)
-    
+
+    def download_history_data2(self, stock_list: list, period: str = "1d",
+                                start_time: str = "", end_time: str = "", incrementally: bool = None):
+        """
+        下载历史数据（服务端封装版本，返回完整状态）
+
+        返回: {'finished': n, 'total': n, 'done': bool, 'message': str, 'result': {}}
+        """
+        self._ensure_connected()
+        return self._conn.root.download_history_data2(stock_list, period, start_time, end_time, incrementally)
+
     def is_connected(self):
         return self._connected
     
