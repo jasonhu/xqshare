@@ -8,7 +8,6 @@ import time
 import threading
 import ssl
 import logging
-import functools
 from typing import Any, Callable, Dict, List
 from datetime import datetime
 
@@ -208,12 +207,11 @@ class RemoteModule:
             raise
     
     def _wrap_call(self, func, func_name: str):
-        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             start_time = time.perf_counter()
             args_str = self._summarize_args(args, kwargs)
             self._logger.debug(f"[CALL] {self._module_name}.{func_name}({args_str})")
-            
+
             try:
                 result = func(*args, **kwargs)
                 elapsed_ms = (time.perf_counter() - start_time) * 1000
@@ -224,7 +222,10 @@ class RemoteModule:
                 elapsed_ms = (time.perf_counter() - start_time) * 1000
                 self._logger.error(f"[ERROR] {self._module_name}.{func_name} | {elapsed_ms:.2f}ms | {type(e).__name__}: {e}")
                 raise
-        
+
+        # 手动设置属性，避免 Python 3.13 functools.wraps 的 __annotations__ 兼容性问题
+        wrapper.__name__ = func_name
+        wrapper.__qualname__ = f"{self._module_name}.{func_name}"
         return wrapper
     
     def _summarize_args(self, args, kwargs, max_len: int = 100) -> str:
