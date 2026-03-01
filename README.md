@@ -132,8 +132,8 @@ python examples/get_tick_data.py --host 192.168.1.100 --codes "000001.SZ"
 # 订阅行情推送（duration=0 持续订阅，Ctrl+C 停止）
 python examples/subscribe_quote.py --host 192.168.1.100 --codes "000001.SZ" --duration 60
 
-# 查询持仓（账户类型: STOCK/CREDIT/FUTURE）
-python examples/query_positions.py --host 192.168.1.100 --account-id "12345678"
+# 查询持仓（需要提供QMT客户端路径）
+python examples/query_positions.py --host 192.168.1.100 --account-id "12345678" --path "C:\\迅投QMT交易端\\userdata_mini"
 
 # 查看帮助
 python examples/get_stock_list.py --help

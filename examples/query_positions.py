@@ -4,15 +4,16 @@
 
 展示如何通过 xtquant-rpyc 查询交易账户的持仓信息。
 
+注意:
+  - 需要先在 Windows 上安装并运行迅投极速交易客户端
+  - 需要提供客户端的 userdata 路径
+
 使用示例:
     # 查询普通股票账户持仓
-    python examples/query_positions.py --host 192.168.1.100 --account-id "12345678"
+    python examples/query_positions.py --host 127.0.0.1 --account-id "12345678" --path "C:\\迅投QMT交易端\\userdata_mini"
 
     # 查询信用账户持仓
-    python examples/query_positions.py --host 192.168.1.100 --account-id "12345678" --account-type CREDIT
-
-    # 查询期货账户持仓
-    python examples/query_positions.py --host 192.168.1.100 --account-id "12345678" --account-type FUTURE
+    python examples/query_positions.py --host 127.0.0.1 --account-id "12345678" --path "C:\\迅投QMT交易端\\userdata_mini" --account-type CREDIT
 """
 
 import argparse
@@ -78,6 +79,7 @@ def main():
   SHENGANGTONG - 深港通
 
 注意:
+  - path 参数是迅投QMT客户端的 userdata_mini 目录路径
   - 资金账号需要与服务端配置的券商账户一致
   - 交易功能需要在 Windows 服务端正确配置券商接口
         """
@@ -89,8 +91,16 @@ def main():
     parser.add_argument("--account-type", default="STOCK",
                         choices=list(ACCOUNT_TYPES.keys()),
                         help=f"账户类型 (默认: STOCK)")
+    parser.add_argument("--path", default="",
+                        help="迅投QMT客户端 userdata_mini 目录路径")
+    parser.add_argument("--session", default=1, type=int, help="会话ID (默认: 1)")
 
     args = parser.parse_args()
+
+    if not args.path:
+        print("错误: 必须提供 --path 参数")
+        print("示例: --path \"C:\\\\迅投QMT交易端\\\\userdata_mini\"")
+        return
 
     # 连接服务端
     print(f"正在连接 {args.host}:{args.port}...")
@@ -101,6 +111,11 @@ def main():
     )
 
     try:
+        # 创建交易实例
+        print(f"正在创建交易实例...")
+        print(f"  路径: {args.path}")
+        trader = xt.xttrader.XtQuantTrader(args.path, args.session)
+
         # 创建账户对象
         account = xt.xttype.StockAccount(args.account_id, args.account_type)
 
@@ -109,7 +124,7 @@ def main():
         print(f"  账户类型: {ACCOUNT_TYPES.get(args.account_type, args.account_type)}")
 
         # 查询持仓
-        positions = xt.xttrader.query_stock_positions(account)
+        positions = trader.query_stock_positions(account)
 
         # 输出结果
         if positions:
