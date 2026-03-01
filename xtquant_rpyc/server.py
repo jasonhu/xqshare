@@ -80,35 +80,37 @@ def _init_logging(log_level="INFO"):
 
 # ==================== 日志装饰器 ====================
 
+def _log_call(name: str, client_info: str, func, *args, **kwargs):
+    """通用的 API 调用日志记录函数"""
+    try:
+        args_str = str(args)[:200] if args else ""
+        kwargs_str = str(kwargs)[:200] if kwargs else ""
+    except:
+        args_str = "<unserializable>"
+        kwargs_str = ""
+
+    api_logger.info(f"[CALL] {name} | client={client_info} | args={args_str} | kwargs={kwargs_str}")
+
+    start_time = time.perf_counter()
+    try:
+        result = func(*args, **kwargs)
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        result_summary = _summarize_result(result)
+        api_logger.info(f"[OK] {name} | elapsed={elapsed_ms:.2f}ms | result={result_summary}")
+        return result
+    except Exception as e:
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        api_logger.error(f"[ERROR] {name} | elapsed={elapsed_ms:.2f}ms | error={type(e).__name__}: {str(e)[:200]}")
+        raise
+
+
 def log_api_call(func_name: str = None):
     """记录 API 调用的装饰器"""
     def decorator(func):
-        @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             name = func_name or func.__name__
             client_info = getattr(self, '_client_info', 'unknown')
-            
-            try:
-                args_str = str(args)[:500] if args else ""
-                kwargs_str = str(kwargs)[:500] if kwargs else ""
-            except:
-                args_str = "<unserializable>"
-                kwargs_str = ""
-            
-            api_logger.info(f"[CALL] {name} | client={client_info} | args={args_str} | kwargs={kwargs_str}")
-            
-            start_time = time.perf_counter()
-            try:
-                result = func(self, *args, **kwargs)
-                elapsed_ms = (time.perf_counter() - start_time) * 1000
-                result_summary = _summarize_result(result)
-                api_logger.info(f"[OK] {name} | elapsed={elapsed_ms:.2f}ms | result={result_summary}")
-                return result
-            except Exception as e:
-                elapsed_ms = (time.perf_counter() - start_time) * 1000
-                api_logger.error(f"[ERROR] {name} | elapsed={elapsed_ms:.2f}ms | error={type(e).__name__}: {str(e)[:200]}")
-                raise
-        
+            return _log_call(name, client_info, func, *args, **kwargs)
         return wrapper
     return decorator
 
@@ -204,6 +206,33 @@ class AuthError(Exception):
     pass
 
 
+# ==================== 模块代理（带日志） ====================
+
+class LoggingModuleProxy:
+    """模块代理：拦截所有方法调用并记录日志"""
+
+    def __init__(self, module, module_name: str, client_info_getter):
+        self._module = module
+        self._module_name = module_name
+        self._get_client_info = client_info_getter
+
+    def __getattr__(self, name):
+        attr = getattr(self._module, name)
+
+        # 如果是可调用对象，包装成带日志的版本
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                full_name = f"{self._module_name}.{name}"
+                return _log_call(full_name, self._get_client_info(), attr, *args, **kwargs)
+            wrapper.__name__ = name
+            return wrapper
+
+        return attr
+
+    def __dir__(self):
+        return dir(self._module)
+
+
 # ==================== 服务类 ====================
 
 class XtQuantService(rpyc.Service):
@@ -294,24 +323,24 @@ class XtQuantService(rpyc.Service):
         return "pong"
     
     # ==================== 模块代理接口 ====================
-    
+
     @log_api_call("get_xtdata")
     def exposed_get_xtdata(self, token=None):
         if token and not self._verify_token(token):
             raise AuthError("未授权访问")
-        return self._xtdata
-    
+        return LoggingModuleProxy(self._xtdata, 'xtdata', lambda: self._client_info)
+
     @log_api_call("get_xttrader")
     def exposed_get_xttrader(self, token=None):
         if token and not self._verify_token(token):
             raise AuthError("未授权访问")
-        return self._xttrader
+        return LoggingModuleProxy(self._xttrader, 'xttrader', lambda: self._client_info)
 
     @log_api_call("get_xttype")
     def exposed_get_xttype(self, token=None):
         if token and not self._verify_token(token):
             raise AuthError("未授权访问")
-        return self._xttype
+        return LoggingModuleProxy(self._xttype, 'xttype', lambda: self._client_info)
 
     @log_api_call("create_trader")
     def exposed_create_trader(self, token=None):
