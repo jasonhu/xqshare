@@ -34,9 +34,22 @@ def signal_handler(signum, frame):
     running = False
 
 
-def on_quote(stock_code: str, data: dict):
-    """行情推送回调函数"""
+def on_quote(stock_code: str, datas: dict):
+    """
+    行情推送回调函数
+
+    注意：原始 xtquant 的 subscribe_quote 回调格式是 {stock: [data1, data2, ...]}
+    我们的服务端封装后会传入 (stock_code, datas)，其中 datas 是 {stock_code: [tick_list]}
+    """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # datas 格式: {stock_code: [tick_data_list]}
+    tick_list = datas.get(stock_code, [])
+    if not tick_list:
+        return
+
+    # 取最新的一个 tick 数据
+    data = tick_list[-1] if isinstance(tick_list, list) else tick_list
 
     # 提取关键数据
     last_price = data.get('lastPrice', 0) or 0

@@ -120,6 +120,9 @@ python examples/get_stock_list.py --host 192.168.1.100 --sector "沪深300"
 # 获取K线数据（支持 1d/1m/5m/15m/30m/60m）
 python examples/get_market_data.py --host 192.168.1.100 --codes "000001.SZ,600000.SH" --period 1d
 
+# 获取K线数据 - 使用 get_market_data_ex（推荐，返回格式更直观）
+python examples/get_market_data_ex.py --host 192.168.1.100 --codes "000001.SZ,600000.SH" --period 1d
+
 # 获取实时行情（含五档盘口）
 python examples/get_tick_data.py --host 192.168.1.100 --codes "000001.SZ"
 
@@ -693,11 +696,12 @@ xtquant-rpyc/
 │   ├── client.py           # 客户端
 │   └── server.py           # 服务端
 ├── examples/               # 示例代码
-│   ├── get_stock_list.py   # 获取股票列表
-│   ├── get_market_data.py  # 获取K线数据
-│   ├── get_tick_data.py    # 获取实时行情
-│   ├── subscribe_quote.py  # 订阅行情推送
-│   └── query_positions.py  # 查询账户持仓
+│   ├── get_stock_list.py      # 获取股票列表
+│   ├── get_market_data.py     # 获取K线数据
+│   ├── get_market_data_ex.py  # 获取K线数据（推荐，格式更直观）
+│   ├── get_tick_data.py       # 获取实时行情
+│   ├── subscribe_quote.py     # 订阅行情推送
+│   └── query_positions.py     # 查询账户持仓
 ├── tests/                  # 测试目录
 │   ├── __init__.py
 │   ├── test_client.py      # 客户端测试
