@@ -75,7 +75,7 @@ K线周期 (period):
         print(f"  K线周期: {args.period}")
         print(f"  日期范围: {args.start} ~ {args.end}")
 
-        df = xt.xtdata.get_market_data(
+        data = xt.xtdata.get_market_data(
             stock_list=stock_codes,
             period=args.period,
             start_time=args.start,
@@ -83,21 +83,30 @@ K线周期 (period):
         )
 
         # 输出结果
+        # get_market_data 返回 dict { field: DataFrame }
+        # DataFrame 的 index 为 stock_list，columns 为 time_list
         print(f"\n{'='*60}")
-        if df is not None and len(df) > 0:
-            print(f"获取到 {len(df)} 条K线数据")
+        if data is not None and len(data) > 0:
+            print(f"获取到 {len(data)} 个字段的数据")
             print(f"{'='*60}")
-            print("\n数据预览 (前10条):")
-            print(df.head(10).to_string())
 
-            if len(df) > 10:
-                print(f"\n... 还有 {len(df) - 10} 条数据")
+            # 获取时间范围（从第一个字段的 DataFrame）
+            first_field = list(data.keys())[0]
+            first_df = data[first_field]
+            time_cols = first_df.columns.tolist()
+            print(f"  时间范围: {time_cols[0]} ~ {time_cols[-1]}")
+            print(f"  时间点数: {len(time_cols)}")
+            print(f"  股票列表: {', '.join(first_df.index.tolist())}")
+            print(f"  数据字段: {', '.join(data.keys())}")
 
-            # 显示数据统计
-            print(f"\n数据统计:")
-            print(f"  时间范围: {df.index[0]} ~ {df.index[-1]}")
-            if hasattr(df, 'columns'):
-                print(f"  数据列: {', '.join(df.columns.tolist())}")
+            # 显示收盘价数据（前5个时间点）
+            if 'close' in data:
+                print(f"\n收盘价数据 (前5个时间点):")
+                print(data['close'].iloc[:, :5].to_string())
+            else:
+                # 如果没有 close 字段，显示第一个字段
+                print(f"\n{first_field} 数据 (前5个时间点):")
+                print(first_df.iloc[:, :5].to_string())
         else:
             print("未获取到数据，请检查股票代码和日期范围")
 
