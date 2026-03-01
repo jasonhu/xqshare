@@ -103,6 +103,7 @@ def main():
         return
 
     # 连接服务端
+    trader = None
     print(f"正在连接 {args.host}:{args.port}...")
     xt = XtQuantRemote(
         host=args.host,
@@ -116,8 +117,25 @@ def main():
         print(f"  路径: {args.path}")
         trader = xt.xttrader.XtQuantTrader(args.path, args.session)
 
+        # 启动交易线程
+        print(f"正在启动交易线程...")
+        trader.start()
+
         # 创建账户对象
         account = xt.xttype.StockAccount(args.account_id, args.account_type)
+
+        # 连接交易服务器
+        print(f"正在连接交易服务器...")
+        connect_result = trader.connect()
+        if connect_result != 0:
+            error_codes = {
+                -1: "交易服务器未连接",
+                -2: "账号未登录",
+                -3: "请求超时",
+                -4: "资金账号不存在",
+            }
+            print(f"连接失败: {error_codes.get(connect_result, f'错误码 {connect_result}')}")
+            return
 
         print(f"\n正在查询持仓...")
         print(f"  资金账号: {args.account_id}")
@@ -159,6 +177,11 @@ def main():
         raise
 
     finally:
+        if trader:
+            try:
+                trader.stop()
+            except:
+                pass
         xt.close()
         print("\n连接已关闭")
 
