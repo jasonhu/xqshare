@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""
+测试 RPyC netref 异步回调机制
+
+验证客户端函数作为 netref 传递给服务端后，服务端能否异步回调。
+"""
+
+import argparse
+import time
+import rpyc
+
+
+def main():
+    parser = argparse.ArgumentParser(description="测试 RPyC 异步回调")
+    parser.add_argument("--host", required=True, help="服务端地址")
+    parser.add_argument("--port", type=int, default=18812, help="服务端端口")
+    parser.add_argument("--delay", type=float, default=2.0, help="回调延迟秒数")
+
+    args = parser.parse_args()
+
+    # 定义回调函数
+    def my_callback(message: str) -> str:
+        timestamp = time.strftime("%H:%M:%S")
+        print(f"[{timestamp}] 收到异步回调: {message}")
+        return "客户端已收到"
+
+    config = {
+        'allow_public_attrs': True,
+        'allow_pickle': True,
+        'allow_getattr': True,
+        'allow_setattr': True,
+        'allow_delattr': True,
+        'allow_all_attrs': True,
+        'sync_request_timeout': 300,
+    }
+
+    print(f"正在连接 {args.host}:{args.port}...")
+    conn = rpyc.connect(args.host, args.port, config=config)
+
+    try:
+        print(f"发起异步回调测试，延迟 {args.delay} 秒...")
+        print(f"等待回调中...\n")
+
+        # 直接调用服务端方法，传递回调函数
+        result = conn.root.test_async_callback(my_callback, args.delay)
+        print(f"服务端返回: {result}")
+
+        # 等待回调执行
+        wait_time = args.delay + 2
+        print(f"\n等待 {wait_time} 秒观察回调...")
+        time.sleep(wait_time)
+
+        print("\n测试完成！")
+
+    finally:
+        conn.close()
+        print("连接已关闭")
+
+
+if __name__ == "__main__":
+    main()

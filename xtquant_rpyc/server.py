@@ -478,6 +478,29 @@ class XtQuantService(rpyc.Service):
     def exposed_ping(self):
         return "pong"
 
+    @log_api_call("test_async_callback")
+    def exposed_test_async_callback(self, callback_func, delay: float = 2.0):
+        """
+        测试 RPyC netref 异步回调机制
+        :param callback_func: 客户端传递的回调函数（netref）
+        :param delay: 延迟秒数后调用回调
+        :return: 立即返回 "已启动"
+        """
+        import threading
+        import time
+
+        def async_call():
+            time.sleep(delay)
+            try:
+                result = callback_func(f"异步回调消息，时间: {time.strftime('%H:%M:%S')}")
+                api_logger.info(f"[异步回调] 执行成功，返回: {result}")
+            except Exception as e:
+                api_logger.error(f"[异步回调] 执行失败: {e}")
+
+        thread = threading.Thread(target=async_call, daemon=True)
+        thread.start()
+        return "已启动异步回调"
+
 
 # ==================== 服务启动 ====================
 
