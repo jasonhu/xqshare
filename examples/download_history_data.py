@@ -86,15 +86,23 @@ K线周期 (period):
         print(f"  日期范围: {args.start} ~ {args.end}")
         print()
 
-        # 定义进度回调
+        # 用状态变量记录下载进度
+        download_status = {'finished': 0, 'total': 0, 'done': False}
+
         def on_progress(data):
-            finished = data.get('finished', 0)
-            total = data.get('total', 0)
+            """进度回调：通过 finished/total 判断是否完成"""
+            download_status['finished'] = data.get('finished', 0)
+            download_status['total'] = data.get('total', 0)
+            download_status['done'] = download_status['finished'] >= download_status['total']
+
+            finished = download_status['finished']
+            total = download_status['total']
             if total > 0:
                 percent = finished / total * 100
                 print(f"\r  下载进度: {finished}/{total} ({percent:.1f}%)", end="", flush=True)
 
-        # download_history_data2 是同步阻塞的，会等待下载完成
+        # download_history_data2 是同步阻塞的
+        # 注意：返回值可能为空，应通过进度回调判断是否完成
         result = xt.xtdata.download_history_data2(
             stock_list=stock_codes,
             period=args.period,
@@ -105,22 +113,21 @@ K线周期 (period):
 
         print()  # 换行
 
-        # 显示下载结果
-        # 返回值说明：
-        #   - 空字典 {}：下载成功（可能是增量下载，无新数据）
-        #   - {stock: {start_time, end_time}}：全量下载成功，包含时间范围
-        #   - 异常：下载失败
-        print(f"\n下载完成！")
+        # 根据进度状态判断是否完成
+        if download_status['done']:
+            print(f"\n✓ 下载完成！")
+        else:
+            print(f"\n⚠ 下载可能未完成: {download_status['finished']}/{download_status['total']}")
+
+        # 显示返回值（可能为空，仅供参考）
         if result:
             print(f"{'='*60}")
-            print("下载详情：")
+            print("下载详情（来自返回值）：")
             for stock_code, info in result.items():
                 start_time = info.get('start_time', 'N/A')
                 end_time = info.get('end_time', 'N/A')
                 print(f"  {stock_code}: {start_time} ~ {end_time}")
             print(f"{'='*60}")
-        else:
-            print("  返回值为空（增量下载或数据已存在，数据已保存到服务端本地）")
 
         print()
         print("验证数据:")
