@@ -38,6 +38,11 @@ def main():
     print(f"正在连接 {args.host}:{args.port}...")
     conn = rpyc.connect(args.host, args.port, config=config)
 
+    # 启动后台线程自动处理传入消息（回调）
+    from rpyc.utils.helpers import BgServingThread
+    bg_thread = BgServingThread(conn)
+    print("已启动后台消息处理线程\n")
+
     try:
         print(f"发起异步回调测试...")
         print(f"  间隔: {args.delay} 秒")
@@ -48,21 +53,15 @@ def main():
         result = conn.root.test_async_callback(my_callback, args.delay, args.count)
         print(f"服务端返回: {result}\n")
 
-        # 等待所有回调执行完成
-        # 注意：需要主动 poll 消息，否则异步回调不会被处理
+        # 等待所有回调执行完成 - 现在可以简单 sleep 了
         wait_time = args.delay * args.count + 2
         print(f"等待 {wait_time} 秒观察回调...\n")
-
-        # 方法1: 使用 poll() 主动处理消息
-        poll_interval = 0.1
-        elapsed = 0.0
-        while elapsed < wait_time:
-            conn.poll(timeout=poll_interval)
-            elapsed += poll_interval
+        time.sleep(wait_time)
 
         print("\n测试完成！")
 
     finally:
+        bg_thread.stop()
         conn.close()
         print("连接已关闭")
 
