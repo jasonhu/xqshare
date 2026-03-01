@@ -137,6 +137,7 @@ XtQuantRemote(
 |------|------|------|
 | `xtdata` | RemoteModule | xtquant.xtdata 模块代理 |
 | `xttrader` | RemoteModule | xtquant.xttrader 模块代理 |
+| `xttype` | RemoteModule | xtquant.xttype 模块代理（账户类型等） |
 
 #### 方法
 
@@ -157,13 +158,19 @@ XtQuantRemote(
 ### 全局便捷函数
 
 ```python
-from xtquant_rpyc import connect, disconnect, get_client, xtdata, xttrader
+from xtquant_rpyc import connect, disconnect, get_client, xtdata, xttrader, xttype
 
 # 创建全局连接
 connect(host="192.168.1.100", client_secret="my-secret")
 
 # 直接使用模块
 stocks = xtdata.get_stock_list_in_sector("沪深A股")
+
+# 创建账户对象
+account = xttype.StockAccount("资金账号", "STOCK")
+
+# 查询持仓
+positions = xttrader.query_stock_positions(account)
 
 # 获取客户端实例
 client = get_client()
@@ -298,31 +305,78 @@ with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
 
 ### 交易示例
 
+#### 查询账户持仓
+
 ```python
 from xtquant_rpyc import XtQuantRemote
 
 with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
+    # 创建账户对象（通过 xttype 代理）
+    # account_type: STOCK(股票), CREDIT(信用), FUTURE(期货) 等
+    account = xt.xttype.StockAccount("你的资金账号", "STOCK")
+
+    # 查询持仓
+    positions = xt.xttrader.query_stock_positions(account)
+
+    # 遍历持仓
+    for pos in positions:
+        print(f"股票: {pos.stock_code}")
+        print(f"  持仓数量: {pos.volume}")
+        print(f"  可用数量: {pos.can_use_volume}")
+        print(f"  成本价: {pos.avg_price}")
+        print(f"  市值: {pos.market_value}")
+        print(f"  盈亏比例: {pos.profit_rate * 100:.2f}%")
+        print("---")
+```
+
+#### 账户类型说明
+
+| account_type | 说明 |
+|--------------|------|
+| `STOCK` | 普通股票账户 |
+| `CREDIT` | 信用账户（两融） |
+| `FUTURE` | 期货账户 |
+| `HUGANGTONG` | 沪港通 |
+| `SHENGANGTONG` | 深港通 |
+
+#### 完整交易流程
+
+```python
+from xtquant_rpyc import XtQuantRemote
+
+with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
+    # 创建账户对象
+    account = xt.xttype.StockAccount("资金账号", "STOCK")
+
     # 创建交易实例
     trader = xt.create_trader()
-    
-    # 连接交易账户
+
+    # 连接交易账户（根据券商配置）
     # trader.connect(account_id, account_key, server_ip)
-    
-    # 下单
-    # order_id = trader.order_stock(
-    #     account=account_id,
-    #     stock_code="000001.SZ",
-    #     order_type=23,  # 买入
-    #     order_volume=100,
-    #     price_type=11,  # 限价
-    #     price=10.0
-    # )
-    
-    # 查询订单
-    # orders = trader.query_stock_orders(account_id)
-    
+
+    # 查询资产
+    # asset = trader.query_stock_asset(account)
+
     # 查询持仓
-    # positions = trader.query_stock_positions(account_id)
+    positions = xt.xttrader.query_stock_positions(account)
+
+    # 下单买入
+    # order_id = xt.xttrader.order_stock(
+    #     account=account,
+    #     stock_code="000001.SZ",
+    #     order_type=23,       # 23=买入, 24=卖出
+    #     order_volume=100,    # 股票以"股"为单位
+    #     price_type=11,       # 11=限价, 12=市价
+    #     price=10.0,
+    #     strategy_name="my_strategy",
+    #     order_remark="test_order"
+    # )
+
+    # 查询订单
+    # orders = xt.xttrader.query_stock_orders(account)
+
+    # 撤单
+    # xt.xttrader.cancel_order(account, order_id)
 ```
 
 ### 批量数据获取

@@ -18,12 +18,14 @@ from typing import Any, Dict
 try:
     import xtquant.xtdata as xtdata
     import xtquant.xttrader as xttrader
+    import xtquant.xttype as xttype
     from xtquant.xttrader import XtQuantTrader
     XTQUANT_AVAILABLE = True
 except ImportError:
     XTQUANT_AVAILABLE = False
     xtdata = None
     xttrader = None
+    xttype = None
     XtQuantTrader = None
 
 
@@ -212,6 +214,7 @@ class XtQuantService(rpyc.Service):
     
     _xtdata = xtdata
     _xttrader = xttrader
+    _xttype = xttype
     _tokens = {}
     
     def on_connect(self, conn):
@@ -303,7 +306,13 @@ class XtQuantService(rpyc.Service):
         if token and not self._verify_token(token):
             raise AuthError("未授权访问")
         return self._xttrader
-    
+
+    @log_api_call("get_xttype")
+    def exposed_get_xttype(self, token=None):
+        if token and not self._verify_token(token):
+            raise AuthError("未授权访问")
+        return self._xttype
+
     @log_api_call("create_trader")
     def exposed_create_trader(self, token=None):
         if token and not self._verify_token(token):

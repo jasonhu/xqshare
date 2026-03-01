@@ -367,6 +367,7 @@ class XtQuantRemote:
         self._callback_server = None
         self._xtdata = RemoteModule(self, 'xtdata')
         self._xttrader = RemoteModule(self, 'xttrader')
+        self._xttype = RemoteModule(self, 'xttype')
         self._logger = get_logger()
         
         self._connect()
@@ -527,11 +528,15 @@ class XtQuantRemote:
     @property
     def xtdata(self):
         return self._xtdata
-    
+
     @property
     def xttrader(self):
         return self._xttrader
-    
+
+    @property
+    def xttype(self):
+        return self._xttype
+
     def create_trader(self):
         self._ensure_connected()
         return self._conn.root.create_trader(self._token)
@@ -638,3 +643,4 @@ class _ModuleProxy:
 
 xtdata = _ModuleProxy('xtdata')
 xttrader = _ModuleProxy('xttrader')
+xttype = _ModuleProxy('xttype')
