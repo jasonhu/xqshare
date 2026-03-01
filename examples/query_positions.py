@@ -17,6 +17,7 @@
 """
 
 import argparse
+import time
 from xtquant_rpyc import XtQuantRemote
 
 
@@ -93,7 +94,6 @@ def main():
                         help=f"账户类型 (默认: STOCK)")
     parser.add_argument("--path", default="",
                         help="迅投QMT客户端 userdata_mini 目录路径")
-    parser.add_argument("--session", default=1, type=int, help="会话ID (默认: 1)")
 
     args = parser.parse_args()
 
@@ -112,10 +112,12 @@ def main():
     )
 
     try:
-        # 创建交易实例
+        # 创建交易实例（使用时间戳生成唯一 session_id）
+        session_id = int(time.time())
         print(f"正在创建交易实例...")
         print(f"  路径: {args.path}")
-        trader = xt.xttrader.XtQuantTrader(args.path, args.session)
+        print(f"  会话ID: {session_id}")
+        trader = xt.xttrader.XtQuantTrader(args.path, session_id)
 
         # 启动交易线程
         print(f"正在启动交易线程...")
