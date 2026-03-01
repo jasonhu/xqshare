@@ -36,7 +36,7 @@ pip install xtquant-rpyc
 ### 从源码安装
 
 ```bash
-git clone https://github.com/yourusername/xtquant-rpyc.git
+git clone https://gitee.com/jdragonhu/xtquant-rpyc.git
 cd xtquant-rpyc
 pip install -e .
 ```
