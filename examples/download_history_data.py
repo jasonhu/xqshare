@@ -106,16 +106,21 @@ K线周期 (period):
         print()  # 换行
 
         # 显示下载结果
+        # 返回值说明：
+        #   - 空字典 {}：下载成功（可能是增量下载，无新数据）
+        #   - {stock: {start_time, end_time}}：全量下载成功，包含时间范围
+        #   - 异常：下载失败
+        print(f"\n下载完成！")
         if result:
-            print(f"\n下载完成！")
             print(f"{'='*60}")
+            print("下载详情：")
             for stock_code, info in result.items():
                 start_time = info.get('start_time', 'N/A')
                 end_time = info.get('end_time', 'N/A')
                 print(f"  {stock_code}: {start_time} ~ {end_time}")
             print(f"{'='*60}")
         else:
-            print(f"\n下载完成！（无返回数据）")
+            print("  返回值为空（增量下载或数据已存在，数据已保存到服务端本地）")
 
         print()
         print("验证数据:")
