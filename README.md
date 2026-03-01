@@ -652,6 +652,80 @@ flake8 xtquant_rpyc/
 
 ---
 
+## 打包与发布
+
+### 环境准备
+
+```bash
+# 安装打包和发布工具
+pip install build twine
+```
+
+| 工具 | 用途 |
+|------|------|
+| `build` | 打包生成 `.whl` + `.tar.gz` |
+| `twine` | 上传到 PyPI |
+
+### 本地打包
+
+```bash
+# 清理旧的构建文件
+rm -rf dist/ build/ *.egg-info
+
+# 执行打包
+python -m build
+
+# 检查生成的包
+ls -la dist/
+# dist/
+# ├── xtquant_rpyc-1.0.0-py3-none-any.whl
+# └── xtquant_rpyc-1.0.0.tar.gz
+
+# 验证包格式
+twine check dist/*
+```
+
+### 发布到 PyPI
+
+**前置条件：**
+1. 注册 [PyPI 账号](https://pypi.org/account/register/)
+2. 创建 API Token：Account settings → API tokens → Add API token
+3. 保存 Token（格式：`pypi-xxxxxx...`，只显示一次！）
+
+**执行发布：**
+
+```bash
+twine upload dist/*
+```
+
+**输入：**
+- Username: `__token__`（字面意思，就是输入这个字符串）
+- Password: 粘贴你的 API Token
+
+### 测试发布（可选）
+
+先在 [TestPyPI](https://test.pypi.org/) 测试：
+
+```bash
+# 发布到 TestPyPI
+twine upload --repository testpypi dist/*
+
+# 从 TestPyPI 安装测试
+pip install --index-url https://test.pypi.org/simple/ xtquant-rpyc
+```
+
+### 发布后验证
+
+```bash
+# 从 PyPI 安装
+pip install xtquant-rpyc
+
+# 验证安装
+python -c "from xtquant_rpyc import XtQuantRemote; print('OK')"
+```
+
+---
+
 ## 日志文件
 
 ```
