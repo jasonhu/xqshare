@@ -37,48 +37,82 @@ from xtquant_rpyc import XtQuantRemote
 
 # 账户类型映射
 ACCOUNT_TYPES = {
-    "STOCK": "普通股票账户",
-    "CREDIT": "信用账户（两融）",
-    "FUTURE": "期货账户",
+    "STOCK": "股票",
+    "CREDIT": "信用",
+    "FUTURE": "期货",
     "HUGANGTONG": "沪港通",
     "SHENGANGTONG": "深港通",
 }
 
 
-def format_position(pos, index: int) -> str:
-    """格式化持仓信息"""
-    lines = [f"\n{'='*60}"]
-    lines.append(f"持仓 {index}")
-    lines.append(f"{'='*60}")
+def print_asset_info(asset):
+    """输出账户资产信息"""
+    if asset is None:
+        return
 
-    # 股票信息
-    lines.append(f"股票代码: {getattr(pos, 'stock_code', 'N/A')}")
+    cash = getattr(asset, 'cash', 0) or 0
+    frozen_cash = getattr(asset, 'frozen_cash', 0) or 0
+    market_value = getattr(asset, 'market_value', 0) or 0
+    total_asset = getattr(asset, 'total_asset', 0) or 0
+    fetch_balance = getattr(asset, 'fetch_balance', 0) or 0
 
-    # 持仓数量
-    volume = getattr(pos, 'volume', 0) or 0
-    can_use = getattr(pos, 'can_use_volume', 0) or 0
-    lines.append(f"持仓数量: {volume:,} 股")
-    lines.append(f"可用数量: {can_use:,} 股")
+    print()
+    print("=" * 80)
+    print(f"{'账户资产':^78}")
+    print("-" * 80)
+    print(f"  可用资金: {cash:>12,.2f} 元    冻结资金: {frozen_cash:>12,.2f} 元")
+    print(f"  持仓市值: {market_value:>12,.2f} 元    总资产:   {total_asset:>12,.2f} 元")
+    print(f"  可取资金: {fetch_balance:>12,.2f} 元")
+    print("=" * 80)
 
-    # 价格信息
-    avg_price = getattr(pos, 'avg_price', 0) or 0
-    market_value = getattr(pos, 'market_value', 0) or 0
-    lines.append(f"成本价: {avg_price:.3f} 元")
-    lines.append(f"市值: {market_value:,.2f} 元")
 
-    # 盈亏信息
-    profit = getattr(pos, 'float_profit', 0) or 0
-    profit_rate = getattr(pos, 'profit_rate', 0) or 0
-    profit_sign = "+" if profit >= 0 else ""
-    lines.append(f"浮动盈亏: {profit_sign}{profit:,.2f} 元")
-    lines.append(f"盈亏比例: {profit_sign}{profit_rate * 100:.2f}%")
+def print_positions_table(positions):
+    """以表格方式输出持仓"""
+    if not positions:
+        print("\n当前账户无持仓")
+        return
 
-    # 冻结信息
-    frozen = getattr(pos, 'frozen_volume', 0) or 0
-    if frozen > 0:
-        lines.append(f"冻结数量: {frozen:,} 股")
+    # 表头
+    print()
+    print("=" * 108)
+    print(f"{'序号':^4} | {'股票代码':^10} | {'名称':^6} | {'持仓':>8} | {'可用':>8} | {'成本':>8} | {'现价':>8} | {'市值':>12} | {'盈亏':>10} | {'盈亏%':>7}")
+    print("-" * 108)
 
-    return "\n".join(lines)
+    total_market_value = 0.0
+    total_profit = 0.0
+
+    for i, pos in enumerate(positions, 1):
+        stock_code = getattr(pos, 'stock_code', 'N/A')
+        stock_name = getattr(pos, 'instrument_name', '') or ''
+        volume = getattr(pos, 'volume', 0) or 0
+        can_use = getattr(pos, 'can_use_volume', 0) or 0
+        avg_price = getattr(pos, 'open_price', 0) or getattr(pos, 'avg_price', 0) or 0
+        last_price = getattr(pos, 'last_price', 0) or 0
+        market_value = round(float(getattr(pos, 'market_value', 0) or 0), 2)
+        # 计算盈亏（XtPosition 没有 float_profit 字段）
+        cost = volume * avg_price
+        profit = round(market_value - cost, 2)
+        profit_rate = getattr(pos, 'profit_rate', 0) or 0
+
+        # 截断股票名称
+        stock_name_display = stock_name[:4].ljust(4) if len(stock_name) >= 4 else stock_name.ljust(4)
+
+        # 盈亏符号
+        profit_sign = "+" if profit >= 0 else ""
+        rate_str = f"+{profit_rate*100:.1f}%" if profit_rate >= 0 else f"{profit_rate*100:.1f}%"
+
+        print(f"{i:^4} | {stock_code:^10} | {stock_name_display:4} | {volume:>8,} | {can_use:>8,} | {avg_price:>8.3f} | {last_price:>8.3f} | {market_value:>12,.0f} | {profit_sign}{abs(profit):>9,.0f} | {rate_str:>8}")
+
+        total_market_value += market_value
+        total_profit += profit
+
+    print("-" * 108)
+
+    # 汇总行
+    profit_sign = "+" if total_profit >= 0 else ""
+    print(f"{'合计':^4} | {'':^10} | {'':^6} | {'':>8} | {'':>8} | {'':>8} | {'':>8} | {total_market_value:>12,.0f} | {profit_sign}{abs(total_profit):>9,.0f} |")
+    print("=" * 108)
+    print(f"\n持仓: {len(positions)} 只 | 市值: {total_market_value:,.0f} 元 | 盈亏: {profit_sign}{abs(total_profit):,.0f} 元")
 
 
 def main():
@@ -129,13 +163,13 @@ def main():
 
     # 连接服务端（支持环境变量）
     trader = None
-    host = args.host  # None 时 XtQuantRemote 会自动读取环境变量
-    port = args.port  # None 时 XtQuantRemote 会自动读取环境变量
-    print(f"正在连接 {host or '环境变量配置'}:{port or '环境变量配置'}...")
+    host_display = args.host or os.environ.get("XTQUANT_REMOTE_HOST", "localhost")
+    port_display = args.port or int(os.environ.get("XTQUANT_REMOTE_PORT", "18812"))
+    print(f"正在连接 {host_display}:{port_display}...")
     xt = XtQuantRemote(
-        host=host,
-        port=port,
-        client_secret=args.secret  # None 时自动读取环境变量
+        host=args.host,
+        port=args.port,
+        client_secret=args.secret
     )
 
     try:
@@ -166,35 +200,21 @@ def main():
             print(f"连接失败: {error_codes.get(connect_result, f'错误码 {connect_result}')}")
             return
 
-        print(f"\n正在查询持仓...")
+        print(f"\n正在查询账户信息...")
         print(f"  资金账号: {account_id}")
         print(f"  账户类型: {ACCOUNT_TYPES.get(args.account_type, args.account_type)}")
+
+        # 查询资产
+        asset = trader.query_stock_asset(account)
 
         # 查询持仓
         positions = trader.query_stock_positions(account)
 
-        # 输出结果
-        if positions:
-            total_market_value = 0
-            total_profit = 0
+        # 输出资产信息
+        print_asset_info(asset)
 
-            for i, pos in enumerate(positions, 1):
-                print(format_position(pos, i))
-                total_market_value += getattr(pos, 'market_value', 0) or 0
-                total_profit += getattr(pos, 'float_profit', 0) or 0
-
-            # 汇总信息
-            profit_sign = "+" if total_profit >= 0 else ""
-            print(f"\n{'='*60}")
-            print(f"持仓汇总")
-            print(f"{'='*60}")
-            print(f"持仓数量: {len(positions)} 只")
-            print(f"总市值: {total_market_value:,.2f} 元")
-            print(f"总浮动盈亏: {profit_sign}{total_profit:,.2f} 元")
-        else:
-            print(f"\n{'='*60}")
-            print("当前账户无持仓")
-            print(f"{'='*60}")
+        # 以表格方式输出持仓
+        print_positions_table(positions)
 
     except Exception as e:
         error_msg = str(e)

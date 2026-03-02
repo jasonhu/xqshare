@@ -16,6 +16,7 @@
 """
 
 import argparse
+import os
 from xtquant_rpyc import XtQuantRemote
 
 
@@ -43,13 +44,16 @@ def main():
     args = parser.parse_args()
 
     # 连接服务端（支持环境变量）
-    host = args.host  # None 时 XtQuantRemote 会自动读取环境变量
-    port = args.port  # None 时 XtQuantRemote 会自动读取环境变量
-    print(f"正在连接 {host or '环境变量配置'}:{port or '环境变量配置'}...")
+    # 获取实际使用的值用于显示
+    host_display = args.host or os.environ.get("XTQUANT_REMOTE_HOST", "localhost")
+    port_display = args.port or int(os.environ.get("XTQUANT_REMOTE_PORT", "18812"))
+    print(f"正在连接 {host_display}:{port_display}...")
+
+    # 创建连接（参数为 None 时自动读取环境变量）
     xt = XtQuantRemote(
-        host=host,
-        port=port,
-        client_secret=args.secret  # None 时自动读取环境变量
+        host=args.host,
+        port=args.port,
+        client_secret=args.secret
     )
 
     try:

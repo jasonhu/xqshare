@@ -17,6 +17,7 @@ get_market_data_ex 返回格式更直观：{stock: DataFrame}，DataFrame 的 in
 """
 
 import argparse
+import os
 from datetime import datetime, timedelta
 from xtquant_rpyc import XtQuantRemote
 

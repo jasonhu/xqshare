@@ -220,8 +220,8 @@ class XtQuantRemote:
     
     def __init__(
         self,
-        host="localhost",
-        port=18812,
+        host=None,
+        port=None,
         client_id=None,
         client_secret=None,
         use_ssl=False,
@@ -231,13 +231,18 @@ class XtQuantRemote:
         heartbeat_interval=30,
         log_level="INFO",
     ):
-        self._host = host
-        self._port = port
         # 支持环境变量：显式参数 > 环境变量 > 默认值
+        if host is None:
+            host = os.environ.get("XTQUANT_REMOTE_HOST", "localhost")
+        if port is None:
+            port = int(os.environ.get("XTQUANT_REMOTE_PORT", "18812"))
         if client_id is None:
             client_id = os.environ.get("XTQUANT_CLIENT_ID", "default")
         if client_secret is None:
             client_secret = os.environ.get("XTQUANT_CLIENT_SECRET", "default-secret")
+
+        self._host = host
+        self._port = port
         self._client_id = client_id
         self._client_secret = client_secret
         self._use_ssl = use_ssl
