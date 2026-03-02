@@ -233,8 +233,13 @@ class XtQuantRemote:
     ):
         self._host = host
         self._port = port
-        self._client_id = client_id or "default"
-        self._client_secret = client_secret or ""
+        # 支持环境变量：显式参数 > 环境变量 > 默认值
+        if client_id is None:
+            client_id = os.environ.get("XTQUANT_CLIENT_ID", "default")
+        if client_secret is None:
+            client_secret = os.environ.get("XTQUANT_CLIENT_SECRET", "default-secret")
+        self._client_id = client_id
+        self._client_secret = client_secret
         self._use_ssl = use_ssl
         self._ssl_verify = ssl_verify
         self._auto_reconnect = auto_reconnect
@@ -480,9 +485,22 @@ class XtQuantRemote:
 
 _global_client = None
 
-def connect(host="localhost", port=18812, **kwargs):
-    """创建全局连接"""
+def connect(host=None, port=None, **kwargs):
+    """创建全局连接
+
+    支持环境变量配置：
+    - XTQUANT_REMOTE_HOST: 服务端地址
+    - XTQUANT_REMOTE_PORT: 服务端端口
+    - XTQUANT_CLIENT_ID: 客户端标识
+    - XTQUANT_CLIENT_SECRET: 客户端密钥
+
+    优先级：显式参数 > 环境变量 > 默认值
+    """
     global _global_client
+    if host is None:
+        host = os.environ.get("XTQUANT_REMOTE_HOST", "localhost")
+    if port is None:
+        port = int(os.environ.get("XTQUANT_REMOTE_PORT", "18812"))
     _global_client = XtQuantRemote(host, port, **kwargs)
     return _global_client
 
