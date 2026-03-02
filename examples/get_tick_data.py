@@ -100,9 +100,9 @@ def main():
   五档行情 - 买卖盘口五档委托价格和数量
         """
     )
-    parser.add_argument("--host", required=True, help="服务端地址")
-    parser.add_argument("--port", type=int, default=18812, help="服务端端口 (默认: 18812)")
-    parser.add_argument("--secret", default="", help="认证密钥")
+    parser.add_argument("--host", help="服务端地址 (默认: 环境变量 XTQUANT_REMOTE_HOST 或 localhost)")
+    parser.add_argument("--port", type=int, help="服务端端口 (默认: 环境变量 XTQUANT_REMOTE_PORT 或 18812)")
+    parser.add_argument("--secret", help="认证密钥 (默认: 环境变量 XTQUANT_CLIENT_SECRET)")
     parser.add_argument("--codes", required=True, help="股票代码，逗号分隔 (如: 000001.SZ,600000.SH)")
 
     args = parser.parse_args()
@@ -110,12 +110,14 @@ def main():
     # 解析股票代码
     stock_codes = [code.strip() for code in args.codes.split(",")]
 
-    # 连接服务端
-    print(f"正在连接 {args.host}:{args.port}...")
+    # 连接服务端（支持环境变量）
+    host = args.host  # None 时 XtQuantRemote 会自动读取环境变量
+    port = args.port  # None 时 XtQuantRemote 会自动读取环境变量
+    print(f"正在连接 {host or '环境变量配置'}:{port or '环境变量配置'}...")
     xt = XtQuantRemote(
-        host=args.host,
-        port=args.port,
-        client_secret=args.secret
+        host=host,
+        port=port,
+        client_secret=args.secret  # None 时自动读取环境变量
     )
 
     try:

@@ -35,19 +35,21 @@ def main():
   沪深指数   - 所有指数
         """
     )
-    parser.add_argument("--host", required=True, help="服务端地址")
-    parser.add_argument("--port", type=int, default=18812, help="服务端端口 (默认: 18812)")
-    parser.add_argument("--secret", default="", help="认证密钥")
+    parser.add_argument("--host", help="服务端地址 (默认: 环境变量 XTQUANT_REMOTE_HOST 或 localhost)")
+    parser.add_argument("--port", type=int, help="服务端端口 (默认: 环境变量 XTQUANT_REMOTE_PORT 或 18812)")
+    parser.add_argument("--secret", help="认证密钥 (默认: 环境变量 XTQUANT_CLIENT_SECRET)")
     parser.add_argument("--sector", default="沪深A股", help="板块名称 (默认: 沪深A股)")
 
     args = parser.parse_args()
 
-    # 连接服务端
-    print(f"正在连接 {args.host}:{args.port}...")
+    # 连接服务端（支持环境变量）
+    host = args.host  # None 时 XtQuantRemote 会自动读取环境变量
+    port = args.port  # None 时 XtQuantRemote 会自动读取环境变量
+    print(f"正在连接 {host or '环境变量配置'}:{port or '环境变量配置'}...")
     xt = XtQuantRemote(
-        host=args.host,
-        port=args.port,
-        client_secret=args.secret
+        host=host,
+        port=port,
+        client_secret=args.secret  # None 时自动读取环境变量
     )
 
     try:
