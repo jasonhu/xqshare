@@ -14,25 +14,31 @@ from datetime import datetime
 
 # ==================== 日志配置 ====================
 
-def setup_logging(log_level: str = "INFO"):
-    """配置客户端日志"""
-    
+def setup_logging(log_level: str = "INFO", quiet: bool = False):
+    """配置客户端日志
+
+    Args:
+        log_level: 日志级别
+        quiet: 是否静默模式（不输出控制台日志）
+    """
     log_dir = os.path.expanduser("~/.xtquant/logs")
     os.makedirs(log_dir, exist_ok=True)
-    
+
     formatter = logging.Formatter(
         fmt='%(asctime)s.%(msecs)03d | %(levelname)-8s | %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
+
     root_logger = logging.getLogger('xtquant_client')
     root_logger.setLevel(getattr(logging, log_level.upper()))
-    
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    console_handler.setLevel(logging.INFO)
-    root_logger.addHandler(console_handler)
-    
+
+    # 静默模式下不添加控制台 handler
+    if not quiet:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        console_handler.setLevel(logging.INFO)
+        root_logger.addHandler(console_handler)
+
     file_handler = logging.FileHandler(
         os.path.join(log_dir, f"client_{datetime.now().strftime('%Y%m%d')}.log"),
         encoding='utf-8'
@@ -40,16 +46,24 @@ def setup_logging(log_level: str = "INFO"):
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.DEBUG)
     root_logger.addHandler(file_handler)
-    
+
     return root_logger
 
 
 _logger = None
+_quiet_mode = False
+
+
+def set_quiet_mode(quiet: bool = True):
+    """设置静默模式"""
+    global _quiet_mode
+    _quiet_mode = quiet
+
 
 def get_logger():
     global _logger
     if _logger is None:
-        _logger = setup_logging()
+        _logger = setup_logging(quiet=_quiet_mode)
     return _logger
 
 

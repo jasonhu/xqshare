@@ -49,6 +49,10 @@ dev = [
     "flake8>=6.0",
 ]
 
+[project.scripts]
+xtdata = "xtquant_rpyc.tools.xtdata:main"
+xttrader = "xtquant_rpyc.tools.xttrader:main"
+
 [project.urls]
 Homepage = "https://gitee.com/jdragonhu/xtquant-rpyc"
 Documentation = "https://gitee.com/jdragonhu/xtquant-rpyc#readme"
