@@ -47,26 +47,11 @@ def format_tick_info(code: str, tick: dict) -> str:
 
     # 委托信息（五档）
     lines.append(f"\n五档行情:")
-    bid_prices = [
-        tick.get('bidPrice1', 0), tick.get('bidPrice2', 0),
-        tick.get('bidPrice3', 0), tick.get('bidPrice4', 0),
-        tick.get('bidPrice5', 0)
-    ]
-    bid_volumes = [
-        tick.get('bidVol1', 0), tick.get('bidVol2', 0),
-        tick.get('bidVol3', 0), tick.get('bidVol4', 0),
-        tick.get('bidVol5', 0)
-    ]
-    ask_prices = [
-        tick.get('askPrice1', 0), tick.get('askPrice2', 0),
-        tick.get('askPrice3', 0), tick.get('askPrice4', 0),
-        tick.get('askPrice5', 0)
-    ]
-    ask_volumes = [
-        tick.get('askVol1', 0), tick.get('askVol2', 0),
-        tick.get('askVol3', 0), tick.get('askVol4', 0),
-        tick.get('askVol5', 0)
-    ]
+    # 五档数据是数组格式: [档位1, 档位2, 档位3, 档位4, 档位5]
+    bid_prices = tick.get('bidPrice', []) or []
+    bid_volumes = tick.get('bidVol', []) or []
+    ask_prices = tick.get('askPrice', []) or []
+    ask_volumes = tick.get('askVol', []) or []
 
     lines.append(f"{'档位':^4} {'买入量':^10} {'买入价':^10} {'卖出价':^10} {'卖出量':^10}")
     lines.append("-" * 50)
