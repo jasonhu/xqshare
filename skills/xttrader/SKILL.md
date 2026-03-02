@@ -1,6 +1,6 @@
 ---
 name: xttrader
-description: 迅投QMT交易命令行工具，查询持仓、资产、下单、撤单等
+description: xtquant-rpyc 交易命令行工具，查询持仓、资产、下单、撤单等
 ---
 
 # xttrader - 交易工具
@@ -49,7 +49,7 @@ description: 迅投QMT交易命令行工具，查询持仓、资产、下单、�
   export XTQUANT_REMOTE_HOST="192.168.1.100"
   export XTQUANT_CLIENT_SECRET="your-secret"
   export XTQUANT_ACCOUNT_ID="你的资金账号"
-  export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"
+  export XTQUANT_USERDATA_PATH="C:\\QMT\\userdata_mini"
   ```
 
 ## 命令格式

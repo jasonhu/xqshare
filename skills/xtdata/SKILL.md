@@ -1,6 +1,6 @@
 ---
 name: xtdata
-description: 迅投QMT行情数据命令行工具，获取股票列表、K线、实时行情等
+description: xtquant-rpyc 行情数据命令行工具，获取股票列表、K线、实时行情等
 ---
 
 # xtdata - 行情数据工具
