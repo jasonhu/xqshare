@@ -34,7 +34,7 @@ def signal_handler(signum, frame):
     running = False
     print("\n\n正在停止订阅...")
     # 强制退出
-    os._exit(0)
+    # os._exit(0)
 
 
 def make_callback(stock_code: str):
@@ -78,11 +78,11 @@ def make_callback(stock_code: str):
             chg_ratio = 0
 
         # 格式化输出
-        print(f"[{timestamp}] {stock_code:12s} | "
+        print(f"[{timestamp}] {stock_code:8s} | "
               f"最新价: {last_price:8.3f} | "
               f"涨跌幅: {chg_sign}{chg_ratio * 100:6.2f}% | "
-              f"成交量: {pvolume:>12,} | "
-              f"成交额: {amount:>15,.0f}")
+              f"成交量: {pvolume:>12,} 股 | "
+              f"成交额: {amount:>15,.0f} 元")
 
     return on_quote
 
