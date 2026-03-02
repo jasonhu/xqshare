@@ -28,7 +28,21 @@ description: 迅投QMT行情数据命令行工具，获取股票列表、K线、
 - 下载历史数据
 - 查询板块信息
 
-## 前置条件
+## 前置条件（用户自行配置）
+
+**⚠️ 以下环境需用户自行配置，本 skill 不提供配置指导**
+
+| 组件 | 要求 | 说明 |
+|------|------|------|
+| Windows 服务器 | 必需 | xtquant 只能运行在 Windows |
+| xtquant-rpyc 服务端 | 必需运行 | 在 Windows 上启动远程服务 |
+
+**本 skill 假设**：
+- Windows 上已配置好 xtquant 环境（含 miniQMT）
+- xtquant-rpyc 服务端已启动并可访问
+- 客户端环境变量已正确配置
+
+## 客户端配置
 
 - 已安装 xtquant-rpyc：`pip install xtquant-rpyc`
 - 已配置环境变量（推荐）：
