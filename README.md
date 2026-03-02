@@ -130,6 +130,64 @@ xt.close()
 
 ---
 
+## 命令行工具
+
+安装后提供两个命令行工具：`xtdata`（行情）和 `xttrader`（交易）。
+
+### xtdata - 行情数据工具
+
+```bash
+# 查看帮助
+xtdata --help
+
+# 获取股票列表
+xtdata get_stock_list_in_sector --sector-name "沪深A股"
+
+# 限制输出数量
+xtdata --limit 100 get_stock_list_in_sector --sector-name "沪深A股"
+
+# 获取K线数据
+xtdata get_market_data_ex --stock-list "['000001.SZ']" --period "1d" --start-time "20260101" --end-time "20260228"
+
+# 获取实时行情
+xtdata get_full_tick --stock-list "['000001.SZ', '600000.SH']"
+```
+
+### xttrader - 交易工具
+
+```bash
+# 查看帮助
+xttrader --help
+
+# 查询持仓（需要设置账号）
+xttrader --account-id "12345678" query_stock_positions
+
+# 查询资产
+xttrader --account-id "12345678" query_stock_asset
+
+# 下单（需要更多参数）
+xttrader --account-id "12345678" order_stock --stock-code "000001.SZ" --order-type 23 --order-volume 100
+```
+
+### 全局参数
+
+| 参数 | 环境变量 | 说明 |
+|------|----------|------|
+| `--host` | XTQUANT_REMOTE_HOST | 服务端地址 |
+| `--port` | XTQUANT_REMOTE_PORT | 服务端端口 |
+| `--secret` | XTQUANT_CLIENT_SECRET | 认证密钥 |
+| `--client-id` | XTQUANT_CLIENT_ID | 客户端标识 |
+| `--limit`, `-n` | - | 列表输出数量限制（默认50） |
+| `--verbose`, `-v` | - | 显示详细日志 |
+
+### 限制
+
+- **不支持订阅功能**：以 `subscribe` 开头的命令（需要回调函数）
+- **不支持回调参数**：`callback` 参数（需要使用 Python API）
+- **交易工具限制**：不支持以 `register` 开头的命令
+
+---
+
 ## 命令行示例
 
 项目提供了命令行工具，位于 `examples/` 目录，方便快速测试。
@@ -740,7 +798,12 @@ xtquant-rpyc/
 ├── xtquant_rpyc/           # 包目录
 │   ├── __init__.py         # 包入口
 │   ├── client.py           # 客户端
-│   └── server.py           # 服务端
+│   ├── server.py           # 服务端
+│   └── tools/              # 命令行工具
+│       ├── __init__.py
+│       ├── common.py       # 共享模块
+│       ├── xtdata.py       # 行情命令行工具
+│       └── xttrader.py     # 交易命令行工具
 ├── examples/               # 示例代码
 │   ├── get_stock_list.py      # 获取股票列表
 │   ├── download_history_data.py  # 下载历史数据（回调版本）
