@@ -70,9 +70,26 @@ xtdata get_full_tick --stock-list "['000001.SZ','600000.SH']"
 ```
 
 ### 下载历史数据
+
+**单只股票下载**：
 ```bash
-xtdata download_history_data --stock-list "['000001.SZ']" --period "1d"
+# download_history_data - 参数: stock_code, period, start_time, end_time
+xtdata download_history_data --stock-code "000001.SZ" --period "1d"
+xtdata download_history_data --stock-code "000001.SZ" --period "1d" --start-time "20250101" --end-time "20250228"
 ```
+
+**批量下载**：
+```bash
+# download_history_data2 - 参数: stock_list, period, start_time, end_time
+xtdata download_history_data2 --stock-list "['000001.SZ','600000.SH']" --period "1d"
+xtdata download_history_data2 --stock-list "['000001.SZ','600000.SH']" --period "5m" --start-time "20250101"
+```
+
+**两个命令区别**：
+| 命令 | 参数 | 说明 |
+|------|------|------|
+| `download_history_data` | `--stock-code` | 单只股票 |
+| `download_history_data2` | `--stock-list` | 批量下载（推荐） |
 
 ## 数据准备提示
 
@@ -83,7 +100,7 @@ xtdata download_history_data --stock-list "['000001.SZ']" --period "1d"
 
 **推荐流程**：
 ```
-1. 先下载: xtdata download_history_data --stock-list "['000001.SZ']" --period "1d"
+1. 先下载: xtdata download_history_data2 --stock-list "['000001.SZ']" --period "1d"
 2. 再查询: xtdata get_market_data_ex --stock-list "['000001.SZ']" --period "1d" --start-time "20250101"
 ```
 
@@ -92,7 +109,7 @@ xtdata download_history_data --stock-list "['000001.SZ']" --period "1d"
 用户: 获取平安银行的日K线数据
 
 AI: 首次查询需要先下载数据...
-[执行] xtdata download_history_data --stock-list "['000001.SZ']" --period "1d"
+[执行] xtdata download_history_data2 --stock-list "['000001.SZ']" --period "1d"
 
 AI: 数据下载完成，现在获取K线数据...
 [执行] xtdata get_market_data_ex --stock-list "['000001.SZ']" --period "1d" --start-time "20250101"
