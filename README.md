@@ -134,30 +134,45 @@ xt.close()
 
 项目提供了命令行工具，位于 `examples/` 目录，方便快速测试。
 
+**推荐：使用环境变量配置（避免敏感信息泄露）**
 ```bash
+# 设置环境变量
+export XTQUANT_REMOTE_HOST="192.168.1.100"
+export XTQUANT_CLIENT_SECRET="your-secret"
+
 # 获取股票列表
-python examples/get_stock_list.py --host 192.168.1.100 --sector "沪深300"
+python examples/get_stock_list.py --sector "沪深300"
 
 # 下载历史数据（首次使用需要先下载数据）
-python examples/download_history_data.py --host 192.168.1.100
-
-# 下载历史数据 - 服务端封装版本（推荐，返回完整状态）
-python examples/download_history_data2.py --host 192.168.1.100
+python examples/download_history_data2.py
 
 # 获取K线数据（支持 1d/1m/5m/15m/30m/60m）
-python examples/get_market_data.py --host 192.168.1.100 --codes "000001.SZ,600000.SH" --period 1d
-
-# 获取K线数据 - 使用 get_market_data_ex（推荐，返回格式更直观）
-python examples/get_market_data_ex.py --host 192.168.1.100 --codes "000001.SZ,600000.SH" --period 1d
+python examples/get_market_data_ex.py --codes "000001.SZ,600000.SH" --period 1d
 
 # 获取实时行情（含五档盘口）
-python examples/get_tick_data.py --host 192.168.1.100 --codes "000001.SZ"
+python examples/get_tick_data.py --codes "000001.SZ"
 
 # 订阅行情推送（duration=0 持续订阅，Ctrl+C 停止）
-python examples/subscribe_quote.py --host 192.168.1.100 --codes "000001.SZ" --duration 60
+python examples/subscribe_quote.py --codes "000001.SZ" --duration 60
+```
 
-# 查询持仓（需要提供QMT客户端路径）
-python examples/query_positions.py --host 192.168.1.100 --account-id "12345678" --path "C:\\迅投QMT交易端\\userdata_mini"
+**交易功能（需要额外配置）:**
+```bash
+# 设置交易相关环境变量
+export XTQUANT_ACCOUNT_ID="12345678"
+export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"
+
+# 查询持仓
+python examples/query_positions.py
+```
+
+**备选：命令行参数（覆盖环境变量）:**
+```bash
+# 显式指定服务端地址
+python examples/get_stock_list.py --host 192.168.1.100 --sector "沪深300"
+
+# 显式指定认证密钥
+python examples/get_tick_data.py --host 192.168.1.100 --secret "your-secret" --codes "000001.SZ"
 
 # 查看帮助
 python examples/get_stock_list.py --help
@@ -216,8 +231,12 @@ XtQuantRemote(
 ```python
 from xtquant_rpyc import connect, disconnect, get_client, xtdata, xttrader, xttype
 
-# 创建全局连接
-connect(host="192.168.1.100", client_secret="my-secret")
+# 方式1：使用环境变量（推荐）
+# 需要先设置: export XTQUANT_REMOTE_HOST="192.168.1.100"
+connect()
+
+# 方式2：显式参数（覆盖环境变量）
+# connect(host="192.168.1.100", client_secret="my-secret")
 
 # 直接使用模块
 stocks = xtdata.get_stock_list_in_sector("沪深A股")
