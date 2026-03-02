@@ -8,15 +8,29 @@
   - 需要先在 Windows 上安装并运行迅投极速交易客户端
   - 需要提供客户端的 userdata 路径
 
+环境变量:
+  XTQUANT_REMOTE_HOST     - 服务端地址
+  XTQUANT_REMOTE_PORT     - 服务端端口
+  XTQUANT_CLIENT_SECRET   - 认证密钥
+  XTQUANT_ACCOUNT_ID      - 资金账号
+  XTQUANT_USERDATA_PATH   - 迅投QMT客户端 userdata_mini 目录路径
+
 使用示例:
-    # 查询普通股票账户持仓
-    python examples/query_positions.py --host 127.0.0.1 --account-id "12345678" --path "C:\\迅投QMT交易端\\userdata_mini"
+    # 使用环境变量配置（推荐）
+    export XTQUANT_REMOTE_HOST="192.168.1.100"
+    export XTQUANT_ACCOUNT_ID="12345678"
+    export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"
+    python examples/query_positions.py
+
+    # 命令行参数（覆盖环境变量）
+    python examples/query_positions.py --account-id "12345678" --path "C:\\迅投QMT交易端\\userdata_mini"
 
     # 查询信用账户持仓
-    python examples/query_positions.py --host 127.0.0.1 --account-id "12345678" --path "C:\\迅投QMT交易端\\userdata_mini" --account-type CREDIT
+    python examples/query_positions.py --account-type CREDIT
 """
 
 import argparse
+import os
 import time
 from xtquant_rpyc import XtQuantRemote
 
@@ -88,18 +102,29 @@ def main():
     parser.add_argument("--host", help="服务端地址 (默认: 环境变量 XTQUANT_REMOTE_HOST 或 localhost)")
     parser.add_argument("--port", type=int, help="服务端端口 (默认: 环境变量 XTQUANT_REMOTE_PORT 或 18812)")
     parser.add_argument("--secret", help="认证密钥 (默认: 环境变量 XTQUANT_CLIENT_SECRET)")
-    parser.add_argument("--account-id", required=True, help="资金账号")
+    parser.add_argument("--account-id", help="资金账号 (默认: 环境变量 XTQUANT_ACCOUNT_ID)")
     parser.add_argument("--account-type", default="STOCK",
                         choices=list(ACCOUNT_TYPES.keys()),
                         help=f"账户类型 (默认: STOCK)")
-    parser.add_argument("--path", default="",
-                        help="迅投QMT客户端 userdata_mini 目录路径")
+    parser.add_argument("--path", help="迅投QMT客户端 userdata_mini 目录路径 (默认: 环境变量 XTQUANT_USERDATA_PATH)")
 
     args = parser.parse_args()
 
-    if not args.path:
-        print("错误: 必须提供 --path 参数")
-        print("示例: --path \"C:\\\\迅投QMT交易端\\\\userdata_mini\"")
+    # 从环境变量读取私密配置
+    account_id = args.account_id or os.environ.get("XTQUANT_ACCOUNT_ID")
+    userdata_path = args.path or os.environ.get("XTQUANT_USERDATA_PATH")
+
+    if not account_id:
+        print("错误: 必须提供资金账号")
+        print("  方式1: 设置环境变量 XTQUANT_ACCOUNT_ID")
+        print("  方式2: 使用 --account-id 参数")
+        return
+
+    if not userdata_path:
+        print("错误: 必须提供 userdata_mini 目录路径")
+        print("  方式1: 设置环境变量 XTQUANT_USERDATA_PATH")
+        print("  方式2: 使用 --path 参数")
+        print("  示例: --path \"C:\\\\迅投QMT交易端\\\\userdata_mini\"")
         return
 
     # 连接服务端（支持环境变量）
@@ -117,16 +142,16 @@ def main():
         # 创建交易实例（使用时间戳生成唯一 session_id）
         session_id = int(time.time())
         print(f"正在创建交易实例...")
-        print(f"  路径: {args.path}")
+        print(f"  路径: {userdata_path}")
         print(f"  会话ID: {session_id}")
-        trader = xt.xttrader.XtQuantTrader(args.path, session_id)
+        trader = xt.xttrader.XtQuantTrader(userdata_path, session_id)
 
         # 启动交易线程
         print(f"正在启动交易线程...")
         trader.start()
 
         # 创建账户对象
-        account = xt.xttype.StockAccount(args.account_id, args.account_type)
+        account = xt.xttype.StockAccount(account_id, args.account_type)
 
         # 连接交易服务器
         print(f"正在连接交易服务器...")
@@ -142,7 +167,7 @@ def main():
             return
 
         print(f"\n正在查询持仓...")
-        print(f"  资金账号: {args.account_id}")
+        print(f"  资金账号: {account_id}")
         print(f"  账户类型: {ACCOUNT_TYPES.get(args.account_type, args.account_type)}")
 
         # 查询持仓
