@@ -107,7 +107,7 @@ class RemoteModule:
             self._client._ensure_connected()
             try:
                 method = getattr(self._client._conn.root, f'get_{self._module_name}')
-                self._module = method(self._client._token)
+                self._module = method()
             except Exception as e:
                 self._module = None
                 raise
@@ -243,7 +243,7 @@ class XtQuantRemote:
         self._log_level = log_level
 
         self._conn = None
-        self._token = None
+        self._authenticated = False
         self._connected = False
         self._reconnecting = False
         self._heartbeat_thread = None
@@ -311,9 +311,9 @@ class XtQuantRemote:
             self._logger.debug("后台服务线程已启动")
 
             if self._client_secret:
-                self._token = self._conn.root.authenticate(self._client_id, self._client_secret)
+                self._conn.root.authenticate(self._client_id, self._client_secret)
                 self._logger.info(f"认证成功: client_id={self._client_id}")
-            
+
             if self._heartbeat_interval > 0:
                 self._start_heartbeat()
             
@@ -387,9 +387,7 @@ class XtQuantRemote:
             try:
                 if self._connected and self._conn:
                     try:
-                        result = self._conn.root.ping()
-                        if result == "pong" and self._token:
-                            self._conn.root.heartbeat(self._token)
+                        self._conn.root.heartbeat()
                     except Exception as e:
                         if self._auto_reconnect:
                             self._logger.warning(f"心跳失败: {e}，尝试重连...")
@@ -400,14 +398,14 @@ class XtQuantRemote:
             except Exception:
                 pass
             self._stop_heartbeat.wait(self._heartbeat_interval)
-    
+
     def _stop_heartbeat_thread(self):
         self._stop_heartbeat.set()
         if self._heartbeat_thread:
             self._heartbeat_thread.join(timeout=2)
-    
+
     # ==================== 公共接口 ====================
-    
+
     @property
     def xtdata(self):
         return self._xtdata
@@ -422,15 +420,15 @@ class XtQuantRemote:
 
     def create_trader(self):
         self._ensure_connected()
-        return self._conn.root.create_trader(self._token)
-    
+        return self._conn.root.create_trader()
+
     def get_all_stocks(self):
         self._ensure_connected()
-        return self._conn.root.get_all_stocks(self._token)
+        return self._conn.root.get_all_stocks()
     
     def get_index_list(self):
         self._ensure_connected()
-        return self._conn.root.get_index_list(self._token)
+        return self._conn.root.get_index_list()
 
     def download_history_data2(self, stock_list: list, period: str = "1d",
                                 start_time: str = "", end_time: str = "", incrementally: bool = None):
@@ -444,10 +442,10 @@ class XtQuantRemote:
 
     def is_connected(self):
         return self._connected
-    
+
     def get_service_status(self):
         self._ensure_connected()
-        return self._conn.root.get_service_status(self._token)
+        return self._conn.root.get_service_status()
     
     def reconnect(self):
         self._reconnect()

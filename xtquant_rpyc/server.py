@@ -4,8 +4,6 @@ XtQuant RPyC Server - Run on Windows to provide xtquant proxy service
 
 import rpyc
 from rpyc.utils.server import ThreadedServer
-import hashlib
-import hmac
 import time
 import os
 import ssl
@@ -196,23 +194,18 @@ LoggingModuleProxy = LoggingProxy
 class XtQuantService(rpyc.Service):
     """完全透明代理服务"""
 
-    AUTH_KEY = os.environ.get("XTQUANT_AUTH_KEY", "your-secret-key-change-me")
-    AUTH_TOKEN_EXPIRE = int(os.environ.get("XTQUANT_TOKEN_EXPIRE", "3600"))
-    
     _xtdata = xtdata
     _xttrader = xttrader
     _xttype = xttype
-    _tokens = {}
-    
+
     def on_connect(self, conn):
         self._conn = conn
         self._authenticated = False
+        self._client_id = None
         # 兼容不同版本 rpyc：尝试获取客户端地址
         try:
-            # 新版本 rpyc
             if hasattr(conn, 'peer'):
                 self._client_info = f"{conn.peer}"
-            # 旧版本 rpyc：从 channel 获取
             elif hasattr(conn, '_channel') and hasattr(conn._channel, 'stream'):
                 stream = conn._channel.stream
                 if hasattr(stream, 'sock'):
@@ -224,37 +217,24 @@ class XtQuantService(rpyc.Service):
                 self._client_info = "unknown"
         except Exception:
             self._client_info = "unknown"
-        self._token = None
         logger.info(f"[连接] 客户端接入: {self._client_info}")
-    
+
     def on_disconnect(self, conn):
         client_info = getattr(self, '_client_info', 'unknown')
         logger.info(f"[断开] 客户端离开: {client_info}")
-        if hasattr(self, '_token') and self._token and self._token in self._tokens:
-            del self._tokens[self._token]
-    
-    def _generate_token(self, client_id):
-        timestamp = str(int(time.time()))
-        message = f"{client_id}:{timestamp}".encode()
-        signature = hmac.new(self.AUTH_KEY.encode(), message, hashlib.sha256).hexdigest()
-        return f"{client_id}:{timestamp}:{signature}"
-    
-    def _verify_token(self, token):
-        try:
-            parts = token.split(":")
-            if len(parts) != 3:
-                return False
-            client_id, timestamp, signature = parts
-            if int(time.time()) - int(timestamp) > self.AUTH_TOKEN_EXPIRE:
-                return False
-            message = f"{client_id}:{timestamp}".encode()
-            expected_sig = hmac.new(self.AUTH_KEY.encode(), message, hashlib.sha256).hexdigest()
-            return hmac.compare_digest(signature, expected_sig)
-        except Exception:
-            return False
-    
+
+    def _require_auth(self):
+        """检查认证状态，未认证则断开连接"""
+        if not self._authenticated:
+            logger.warning(f"[未授权] 未认证的访问尝试，断开连接: {self._client_info}")
+            try:
+                self._conn.close()
+            except:
+                pass
+            raise AuthError("未授权访问，请先认证")
+
     # ==================== 认证接口 ====================
-    
+
     @log_api_call("authenticate")
     def exposed_authenticate(self, client_id, client_secret):
         # 优先使用特定客户端密码，否则使用默认密码
@@ -262,63 +242,57 @@ class XtQuantService(rpyc.Service):
                           os.environ.get("XTQUANT_CLIENT_SECRET", "default-secret")
 
         if client_secret != expected_secret:
-            logger.warning(f"[认证失败] client_id={client_id}")
+            logger.warning(f"[认证失败] client_id={client_id}，断开连接")
+            try:
+                self._conn.close()
+            except:
+                pass
             raise AuthError("认证失败：无效的客户端凭证")
-        
-        token = self._generate_token(client_id)
-        self._tokens[token] = {"client_id": client_id, "created_at": time.time()}
+
         self._authenticated = True
-        self._token = token
-        self._client_info = f"{client_id}@{self._conn.peer}"
+        self._client_id = client_id
+        self._client_info = f"{client_id}@{self._client_info}"
         logger.info(f"[认证成功] client_id={client_id}")
-        return token
-    
+        return True
+
     @log_api_call("heartbeat")
-    def exposed_heartbeat(self, token=None):
-        if token and token in self._tokens:
-            self._tokens[token]["last_heartbeat"] = time.time()
+    def exposed_heartbeat(self):
         return "pong"
-    
+
     # ==================== 模块代理接口 ====================
 
     @log_api_call("get_xtdata")
-    def exposed_get_xtdata(self, token=None):
-        if token and not self._verify_token(token):
-            raise AuthError("未授权访问")
+    def exposed_get_xtdata(self):
+        self._require_auth()
         return LoggingModuleProxy(self._xtdata, 'xtdata', lambda: self._client_info)
 
     @log_api_call("get_xttrader")
-    def exposed_get_xttrader(self, token=None):
-        if token and not self._verify_token(token):
-            raise AuthError("未授权访问")
+    def exposed_get_xttrader(self):
+        self._require_auth()
         return LoggingModuleProxy(self._xttrader, 'xttrader', lambda: self._client_info)
 
     @log_api_call("get_xttype")
-    def exposed_get_xttype(self, token=None):
-        if token and not self._verify_token(token):
-            raise AuthError("未授权访问")
+    def exposed_get_xttype(self):
+        self._require_auth()
         return LoggingModuleProxy(self._xttype, 'xttype', lambda: self._client_info)
 
     @log_api_call("create_trader")
-    def exposed_create_trader(self, token=None):
-        if token and not self._verify_token(token):
-            raise AuthError("未授权访问")
+    def exposed_create_trader(self):
+        self._require_auth()
         if not XTQUANT_AVAILABLE:
             raise RuntimeError("xtquant 库未安装")
         return XtQuantTrader()
-    
+
     # ==================== 辅助接口 ====================
-    
+
     @log_api_call("get_all_stocks")
-    def exposed_get_all_stocks(self, token=None):
-        if token and not self._verify_token(token):
-            raise AuthError("未授权访问")
+    def exposed_get_all_stocks(self):
+        self._require_auth()
         return self._xtdata.get_stock_list_in_sector("沪深A股")
-    
+
     @log_api_call("get_index_list")
-    def exposed_get_index_list(self, token=None):
-        if token and not self._verify_token(token):
-            raise AuthError("未授权访问")
+    def exposed_get_index_list(self):
+        self._require_auth()
         return self._xtdata.get_stock_list_in_sector("沪深指数")
 
     # ==================== 服务端封装接口 ====================
@@ -358,12 +332,11 @@ class XtQuantService(rpyc.Service):
     # ==================== 服务状态 ====================
 
     @log_api_call("get_service_status")
-    def exposed_get_service_status(self, token=None):
-        if token and not self._verify_token(token):
-            raise AuthError("未授权访问")
+    def exposed_get_service_status(self):
+        self._require_auth()
         return {
             "uptime": time.time() - getattr(self, '_start_time', time.time()),
-            "active_tokens": len(self._tokens),
+            "client_id": self._client_id,
         }
 
     @log_api_call("ping")

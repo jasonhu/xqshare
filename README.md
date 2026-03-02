@@ -70,10 +70,8 @@ python -m xtquant_rpyc.server --log-level DEBUG
 # 服务配置
 export XTQUANT_PORT="18812"              # 监听端口
 export XTQUANT_LOG_DIR="logs"            # 日志目录
-export XTQUANT_TOKEN_EXPIRE="3600"       # Token 过期时间（秒）
 
 # 认证密钥
-export XTQUANT_AUTH_KEY="your-auth-key"
 export XTQUANT_CLIENT_SECRET="default-secret"
 ```
 
