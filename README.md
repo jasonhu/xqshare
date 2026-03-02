@@ -936,7 +936,7 @@ python -c "from xtquant_rpyc import XtQuantRemote; print('OK')"
   └── api_calls_YYYYMMDD.log         # API调用日志
 
 客户端:
-  ~/.xtquant/logs/client_YYYYMMDD.log
+  logs/client_YYYYMMDD.log  # 或通过 XTQUANT_LOG_DIR 环境变量指定
 ```
 
 ---

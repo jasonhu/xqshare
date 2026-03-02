@@ -21,7 +21,8 @@ def setup_logging(log_level: str = "INFO", quiet: bool = False):
         log_level: 日志级别
         quiet: 是否静默模式（不输出控制台日志）
     """
-    log_dir = os.path.expanduser("~/.xtquant/logs")
+    # 日志目录：优先使用环境变量，默认为工作目录的 logs
+    log_dir = os.environ.get("XTQUANT_LOG_DIR", "logs")
     os.makedirs(log_dir, exist_ok=True)
 
     formatter = logging.Formatter(
