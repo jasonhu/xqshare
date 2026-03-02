@@ -39,6 +39,10 @@ def main():
   API 函数参数放在 command 之后
   account 参数会自动补充，无需手动传递
 
+限制:
+  不支持以 subscribe/register 开头的命令（订阅/回调功能）
+  不支持 callback 参数（回调功能需要使用 Python API）
+
 常用命令:
   query_stock_positions  - 查询持仓
   query_stock_asset      - 查询资产

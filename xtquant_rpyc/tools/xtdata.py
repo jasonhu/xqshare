@@ -35,6 +35,10 @@ def main():
   工具参数 (--host, --port, --limit 等) 必须放在 command 之前
   API 函数参数放在 command 之后
 
+限制:
+  不支持以 subscribe 开头的命令（订阅功能需要回调）
+  不支持 callback 参数（回调功能需要使用 Python API）
+
 示例:
   xtdata --limit 100 get_stock_list_in_sector --sector-name "沪深A股"
   xtdata --host 192.168.1.100 get_full_tick --codes "000001.SZ"
