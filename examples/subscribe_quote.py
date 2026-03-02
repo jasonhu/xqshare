@@ -20,6 +20,7 @@ import argparse
 import time
 import signal
 import sys
+import os
 from datetime import datetime
 from xtquant_rpyc import XtQuantRemote
 
@@ -28,10 +29,12 @@ running = True
 
 
 def signal_handler(signum, frame):
-    """信号处理器"""
+    """信号处理器 - 强制退出"""
     global running
     running = False
-    # 立即退出，    sys.exit(0)
+    print("\n\n正在停止订阅...")
+    # 强制退出
+    os._exit(0)
 
 
 def make_callback(stock_code: str):
@@ -42,6 +45,12 @@ def make_callback(stock_code: str):
 
         xtquant 的 subscribe_quote 回调格式是 {stock: [data1, data2, ...]}
         """
+        global running
+
+        # 检查是否应该退出
+        if not running:
+            return
+
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # datas 格式: {stock_code: [tick_data_list]}
@@ -130,10 +139,10 @@ def main():
         # 直接通过 xt.xtdata 订阅（回调函数作为 netref 传递）
         # 注意：period='tick' 订阅实时分笔数据
         # 保存订阅序号，用于后续取消订阅
-        subscriptions = {}
+        subscriptions = []
         for code in stock_codes:
             seq = xt.xtdata.subscribe_quote(code, period='tick', callback=make_callback(code))
-            subscriptions[code] = seq
+            subscriptions.append((code, seq))
             print(f"已订阅: {code} (seq={seq})")
 
         # 等待
@@ -143,12 +152,15 @@ def main():
             while running:
                 time.sleep(1)
         else:
-            # 定时订阅
+            # 定时订阅（使用可中断的等待）
             print(f"\n订阅 {args.duration} 秒...\n")
-            time.sleep(args.duration)
+            end_time = time.time() + args.duration
+            while running and time.time() < end_time:
+                time.sleep(0.5)
 
         # 取消订阅（使用订阅序号）
-        for code, seq in subscriptions.items():
+        print("\n正在取消订阅...")
+        for code, seq in subscriptions:
             xt.xtdata.unsubscribe_quote(seq)
             print(f"已取消: {code} (seq={seq})")
 
