@@ -65,22 +65,40 @@ python -m xtquant_rpyc.server --ssl --cert server.crt --key server.key
 python -m xtquant_rpyc.server --log-level DEBUG
 ```
 
-**环境变量配置：**
+**环境变量配置（推荐）:**
+
+服务端:
 ```bash
-# 服务配置
 export XTQUANT_PORT="18812"              # 监听端口
 export XTQUANT_LOG_DIR="logs"            # 日志目录
-
-# 认证密钥
-export XTQUANT_CLIENT_SECRET="default-secret"
+export XTQUANT_CLIENT_SECRET="default-secret"  # 默认认证密钥
+# export XTQUANT_CLIENT_app1="xxx"   # 特定客户端密钥（可选）
 ```
 
-### 2. macOS/Linux 客户端
+客户端:
+```bash
+export XTQUANT_REMOTE_HOST="192.168.1.100"   # 服务端地址
+export XTQUANT_REMOTE_PORT="18812"           # 服务端端口
+export XTQUANT_CLIENT_SECRET="your-secret"   # 认证密钥
+# export XTQUANT_CLIENT_ID="my-app"        # 客户端标识（可选）
+```
+
+交易功能（需要资金账号和QMT路径）:
+```bash
+export XTQUANT_ACCOUNT_ID="12345678"              # 资金账号
+export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"  # QMT路径
+```### 2. macOS/Linux 客户端
 
 ```python
 from xtquant_rpyc import XtQuantRemote
 
-# 创建连接
+# 方式1：使用环境变量（推荐）
+# 需要先设置环境变量：
+#   export XTQUANT_REMOTE_HOST="192.168.1.100"
+#   export XTQUANT_CLIENT_SECRET="your-secret"
+xt = XtQuantRemote()  # 自动读取环境变量
+
+# 方式2：显式参数（覆盖环境变量）
 xt = XtQuantRemote(
     host="192.168.1.100",
     port=18812,
