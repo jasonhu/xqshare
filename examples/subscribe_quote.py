@@ -30,8 +30,8 @@ running = True
 def signal_handler(signum, frame):
     """信号处理器"""
     global running
-    print("\n\n正在停止订阅...")
     running = False
+    # 立即退出，    sys.exit(0)
 
 
 def make_callback(stock_code: str):
@@ -128,9 +128,13 @@ def main():
         print(f"{'='*80}")
 
         # 直接通过 xt.xtdata 订阅（回调函数作为 netref 传递）
+        # 注意：period='tick' 订阅实时分笔数据
+        # 保存订阅序号，用于后续取消订阅
+        subscriptions = {}
         for code in stock_codes:
-            xt.xtdata.subscribe_quote(code, callback=make_callback(code))
-            print(f"已订阅: {code}")
+            seq = xt.xtdata.subscribe_quote(code, period='tick', callback=make_callback(code))
+            subscriptions[code] = seq
+            print(f"已订阅: {code} (seq={seq})")
 
         # 等待
         if args.duration == 0:
@@ -143,10 +147,10 @@ def main():
             print(f"\n订阅 {args.duration} 秒...\n")
             time.sleep(args.duration)
 
-        # 取消订阅
-        for code in stock_codes:
-            xt.xtdata.unsubscribe_quote(code)
-            print(f"已取消: {code}")
+        # 取消订阅（使用订阅序号）
+        for code, seq in subscriptions.items():
+            xt.xtdata.unsubscribe_quote(seq)
+            print(f"已取消: {code} (seq={seq})")
 
     finally:
         xt.close()
