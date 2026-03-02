@@ -60,6 +60,13 @@ def main():
 
         params = parse_kv_args(args.args)
         params = preprocess_params(params)
+
+        # 检查 callback 参数
+        if 'callback' in params:
+            print("错误: 命令行工具不支持回调参数 'callback'", file=sys.stderr)
+            print("提示: 回调功能需要使用 Python API 或 examples 脚本", file=sys.stderr)
+            sys.exit(1)
+
         result = func(**params)
         limit = None if args.limit == 0 else args.limit
         format_output(result, limit)
