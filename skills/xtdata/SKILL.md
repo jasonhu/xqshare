@@ -1,0 +1,109 @@
+---
+name: xtdata
+description: 迅投QMT行情数据命令行工具，获取股票列表、K线、实时行情等
+---
+
+# xtdata - 行情数据工具
+
+## 使用场景
+
+当用户需要：
+- 获取股票列表（沪深A股、板块成分股等）
+- 获取K线数据（日线、分钟线）
+- 获取实时行情/五档盘口
+- 下载历史数据
+- 查询板块信息
+
+## 前置条件
+
+- 已安装 xtquant-rpyc：`pip install xtquant-rpyc`
+- 已配置环境变量（推荐）：
+  ```bash
+  export XTQUANT_REMOTE_HOST="192.168.1.100"
+  export XTQUANT_CLIENT_SECRET="your-secret"
+  ```
+
+## 命令格式
+
+```bash
+xtdata [全局参数] <command> [API参数]
+```
+
+**参数规则**：全局参数在 command 之前，API 参数在 command 之后
+
+## 全局参数
+
+| 参数 | 环境变量 | 说明 |
+|------|----------|------|
+| `--host` | XTQUANT_REMOTE_HOST | 服务端地址 |
+| `--port` | XTQUANT_REMOTE_PORT | 服务端端口 |
+| `--secret` | XTQUANT_CLIENT_SECRET | 认证密钥 |
+| `--client-id` | XTQUANT_CLIENT_ID | 客户端标识 |
+| `--limit`, `-n` | - | 列表输出限制（默认50） |
+| `--verbose`, `-v` | - | 显示详细日志 |
+
+## 常用命令
+
+### 获取股票列表
+```bash
+xtdata get_stock_list_in_sector --sector-name "沪深A股"
+xtdata -n 100 get_stock_list_in_sector --sector-name "沪深300"
+```
+
+### 获取板块列表
+```bash
+xtdata get_sector_list
+```
+
+### 获取K线数据
+```bash
+# 日K线
+xtdata get_market_data_ex --stock-list "['000001.SZ']" --period "1d" --start-time "20250101"
+
+# 5分钟K线
+xtdata get_market_data_ex --stock-list "['000001.SZ','600000.SH']" --period "5m" --start-time "20250101"
+```
+
+### 获取实时行情
+```bash
+xtdata get_full_tick --stock-list "['000001.SZ','600000.SH']"
+```
+
+### 下载历史数据
+```bash
+xtdata download_history_data --stock-list "['000001.SZ']" --period "1d"
+```
+
+## 数据准备提示
+
+**查询市场数据前，应确保数据已下载**：
+
+- 如果是首次查询某只股票的数据，或数据可能不是最新的，应先执行下载命令
+- 下载命令会更新本地缓存，确保查询返回最新数据
+
+**推荐流程**：
+```
+1. 先下载: xtdata download_history_data --stock-list "['000001.SZ']" --period "1d"
+2. 再查询: xtdata get_market_data_ex --stock-list "['000001.SZ']" --period "1d" --start-time "20250101"
+```
+
+**示例**：
+```
+用户: 获取平安银行的日K线数据
+
+AI: 首次查询需要先下载数据...
+[执行] xtdata download_history_data --stock-list "['000001.SZ']" --period "1d"
+
+AI: 数据下载完成，现在获取K线数据...
+[执行] xtdata get_market_data_ex --stock-list "['000001.SZ']" --period "1d" --start-time "20250101"
+```
+
+## 限制
+
+- **不支持 subscribe 开头的命令**（需要回调）
+- **不支持 callback 参数**（需要 Python API）
+
+## 参数格式
+
+- 列表参数：`"['item1','item2']"` (Python 列表格式)
+- 日期格式：`YYYYMMDD` 或 `YYYY-MM-DD`
