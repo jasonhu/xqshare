@@ -5,6 +5,20 @@ description: 迅投QMT行情数据命令行工具，获取股票列表、K线、
 
 # xtdata - 行情数据工具
 
+## ⚠️ 重要约束
+
+**必须使用 `xtdata` 命令行工具，禁止直接调用 Python xtquant 库**
+
+| ✅ 正确做法 | ❌ 错误做法 |
+|------------|------------|
+| `xtdata get_full_tick --stock-list "..."` | `from xtquant import xtdata` |
+| `xtdata get_market_data_ex --stock-list "..."` | `xtdata.get_market_data(...)` |
+
+**原因**：
+- xtquant 只能在 Windows 上运行
+- 本地环境（macOS/Linux）无法直接调用 xtquant
+- 必须通过 xtquant-rpyc 的命令行工具远程调用
+
 ## 使用场景
 
 当用户需要：
