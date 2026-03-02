@@ -149,7 +149,7 @@ class RemoteModule:
         def wrapper(*args, **kwargs):
             start_time = time.perf_counter()
             args_str = self._summarize_args(args, kwargs)
-            self._logger.debug(f"[CALL] {self._module_name}.{func_name}({args_str})")
+            self._logger.info(f"[CALL] {self._module_name}.{func_name}({args_str})")
 
             try:
                 result = func(*args, **kwargs)
