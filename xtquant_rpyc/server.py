@@ -31,8 +31,10 @@ except ImportError:
 
 # ==================== 日志配置 ====================
 
-def setup_logging(log_dir: str = "logs", log_level: str = "INFO"):
+def setup_logging(log_dir: str = None, log_level: str = "INFO"):
     """配置日志系统"""
+    if log_dir is None:
+        log_dir = os.environ.get("XTQUANT_LOG_DIR", "logs")
     os.makedirs(log_dir, exist_ok=True)
     
     formatter = logging.Formatter(
@@ -193,9 +195,9 @@ LoggingModuleProxy = LoggingProxy
 
 class XtQuantService(rpyc.Service):
     """完全透明代理服务"""
-    
+
     AUTH_KEY = os.environ.get("XTQUANT_AUTH_KEY", "your-secret-key-change-me")
-    AUTH_TOKEN_EXPIRE = 3600
+    AUTH_TOKEN_EXPIRE = int(os.environ.get("XTQUANT_TOKEN_EXPIRE", "3600"))
     
     _xtdata = xtdata
     _xttrader = xttrader
@@ -255,10 +257,10 @@ class XtQuantService(rpyc.Service):
     
     @log_api_call("authenticate")
     def exposed_authenticate(self, client_id, client_secret):
-        expected_secret = os.environ.get(f"XTQUANT_CLIENT_{client_id}", "")
-        if not expected_secret:
-            expected_secret = os.environ.get("XTQUANT_CLIENT_SECRET", "default-secret")
-        
+        # 优先使用特定客户端密码，否则使用默认密码
+        expected_secret = os.environ.get(f"XTQUANT_CLIENT_{client_id}") or \
+                          os.environ.get("XTQUANT_CLIENT_SECRET", "default-secret")
+
         if client_secret != expected_secret:
             logger.warning(f"[认证失败] client_id={client_id}")
             raise AuthError("认证失败：无效的客户端凭证")
@@ -404,8 +406,10 @@ def create_ssl_context(certfile=None, keyfile=None):
     return ctx
 
 
-def start_server(host="0.0.0.0", port=18812, use_ssl=False, certfile=None, keyfile=None, log_level="INFO"):
+def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfile=None, log_level="INFO"):
     """启动服务"""
+    if port is None:
+        port = int(os.environ.get("XTQUANT_PORT", "18812"))
     
     if not XTQUANT_AVAILABLE:
         print("错误: xtquant 库未安装，请先安装 xtquant")
@@ -494,7 +498,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="XtQuant RPyC 服务")
     parser.add_argument("--host", default="0.0.0.0", help="监听地址")
-    parser.add_argument("--port", type=int, default=18812, help="监听端口")
+    parser.add_argument("--port", type=int, default=None, help="监听端口 (默认: 18812 或 XTQUANT_PORT)")
     parser.add_argument("--ssl", action="store_true", help="启用 SSL 加密")
     parser.add_argument("--cert", help="SSL 证书文件")
     parser.add_argument("--key", help="SSL 私钥文件")
