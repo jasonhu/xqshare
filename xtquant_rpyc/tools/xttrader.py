@@ -57,6 +57,12 @@ def main():
 
     args = parser.parse_args()
 
+    # 拒绝订阅相关命令
+    if args.command.startswith('subscribe') or args.command.startswith('register'):
+        print(f"错误: 命令行工具不支持订阅/回调功能 '{args.command}'", file=sys.stderr)
+        print("提示: 订阅功能需要回调函数支持，请使用 Python API 或 examples 脚本", file=sys.stderr)
+        sys.exit(1)
+
     with create_client(args.host, args.port, args.secret, args.client_id, quiet=not args.verbose) as xt:
         try:
             trader, account = create_trader(xt, args.userdata_path, args.account_id, args.account_type)

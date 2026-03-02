@@ -46,6 +46,12 @@ def main():
 
     args = parser.parse_args()
 
+    # 拒绝订阅相关命令
+    if args.command.startswith('subscribe'):
+        print(f"错误: 命令行工具不支持订阅功能 '{args.command}'", file=sys.stderr)
+        print("提示: 订阅功能需要回调函数支持，请使用 Python API 或 examples 脚本", file=sys.stderr)
+        sys.exit(1)
+
     with create_client(args.host, args.port, args.secret, args.client_id, quiet=not args.verbose) as xt:
         func = getattr(xt.xtdata, args.command, None)
         if func is None:
