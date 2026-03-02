@@ -86,85 +86,9 @@ class ReconnectPolicy:
         return min(delay, self.max_delay)
 
 
-# ==================== 回调服务器 ====================
+# ==================== 后台服务线程 ====================
 
-class CallbackServer:
-    """回调服务器：接收服务端的回调调用"""
-    
-    def __init__(self, port=0, host="0.0.0.0"):
-        self._host = host
-        self._port = port
-        self._server = None
-        self._thread = None
-        self._callbacks: Dict[str, Callable] = {}
-        self._running = False
-        self._logger = get_logger()
-    
-    def start(self):
-        if self._running:
-            return
-        
-        # Create a service class that references this callback server
-        callback_server = self
-        
-        class CallbackService(rpyc.Service):
-            def exposed_invoke(self, callback_id: str, *args, **kwargs):
-                return callback_server._invoke_callback(callback_id, *args, **kwargs)
-        
-        from rpyc.utils.server import ThreadedServer
-        
-        # Get available port first
-        if self._port == 0:
-            import socket
-            with socket.socket() as s:
-                s.bind(('', 0))
-                self._port = s.getsockname()[1]
-        
-        self._server = ThreadedServer(
-            CallbackService,
-            hostname=self._host,
-            port=self._port,
-            protocol_config={
-                'allow_public_attrs': True,
-                'allow_pickle': True,
-            }
-        )
-        
-        self._running = True
-        self._thread = threading.Thread(target=self._server.start, daemon=True)
-        self._thread.start()
-        
-        self._logger.info(f"回调服务器启动: port={self._port}")
-    
-    def stop(self):
-        if self._server and self._running:
-            self._server.close()
-            self._running = False
-            self._logger.info("回调服务器已停止")
-    
-    def register(self, callback_id: str, callback: Callable):
-        self._callbacks[callback_id] = callback
-        self._logger.debug(f"注册回调: {callback_id}")
-    
-    def unregister(self, callback_id: str):
-        if callback_id in self._callbacks:
-            del self._callbacks[callback_id]
-            self._logger.debug(f"注销回调: {callback_id}")
-    
-    def _invoke_callback(self, callback_id: str, *args, **kwargs):
-        callback = self._callbacks.get(callback_id)
-        if callback:
-            try:
-                return callback(*args, **kwargs)
-            except Exception as e:
-                self._logger.error(f"回调执行失败: {callback_id} | error={e}")
-                raise
-        else:
-            self._logger.warning(f"回调不存在: {callback_id}")
-            raise CallbackError(f"Callback not found: {callback_id}")
-    
-    def get_port(self):
-        return self._port
+from rpyc.utils.helpers import BgServingThread
 
 
 # ==================== 远程模块代理 ====================
@@ -272,43 +196,6 @@ class RemoteModule:
         return dir(module)
 
 
-# ==================== 行情订阅管理 ====================
-
-class QuoteSubscription:
-    """行情订阅管理"""
-    
-    def __init__(self, client, stock_code: str, callback: Callable):
-        self._client = client
-        self._stock_code = stock_code
-        self._callback = callback
-        self._callback_id = f"quote_{stock_code}_{id(self)}"
-        self._active = False
-        self._logger = get_logger()
-    
-    def start(self):
-        if self._active:
-            return
-        self._client._callback_server.register(self._callback_id, self._callback)
-        self._client._conn.root.subscribe_quote(self._stock_code, self._callback_id)
-        self._active = True
-        self._logger.info(f"订阅行情: {self._stock_code}")
-    
-    def stop(self):
-        if not self._active:
-            return
-        self._client._conn.root.unsubscribe_quote(self._stock_code)
-        self._client._callback_server.unregister(self._callback_id)
-        self._active = False
-        self._logger.info(f"取消订阅: {self._stock_code}")
-    
-    def __enter__(self):
-        self.start()
-        return self
-    
-    def __exit__(self, *args):
-        self.stop()
-
-
 # ==================== 主客户端类 ====================
 
 class XtQuantRemote:
@@ -343,7 +230,6 @@ class XtQuantRemote:
         max_retries=5,
         heartbeat_interval=30,
         log_level="INFO",
-        callback_port=0,
     ):
         self._host = host
         self._port = port
@@ -355,22 +241,20 @@ class XtQuantRemote:
         self._reconnect_policy = ReconnectPolicy(max_retries=max_retries)
         self._heartbeat_interval = heartbeat_interval
         self._log_level = log_level
-        self._callback_port = callback_port
-        
+
         self._conn = None
         self._token = None
         self._connected = False
         self._reconnecting = False
         self._heartbeat_thread = None
         self._stop_heartbeat = threading.Event()
-        self._subscriptions: List[QuoteSubscription] = []
-        
-        self._callback_server = None
+        self._bg_thread = None  # BgServingThread for async callbacks
+
         self._xtdata = RemoteModule(self, 'xtdata')
         self._xttrader = RemoteModule(self, 'xttrader')
         self._xttype = RemoteModule(self, 'xttype')
         self._logger = get_logger()
-        
+
         self._connect()
     
     def _should_reconnect(self, error):
@@ -421,8 +305,11 @@ class XtQuantRemote:
                     self._conn = rpyc.connect(self._host, self._port, config=config)
             
             self._connected = True
-            self._start_callback_server()
-            
+
+            # 启动后台服务线程处理异步回调
+            self._bg_thread = BgServingThread(self._conn)
+            self._logger.debug("后台服务线程已启动")
+
             if self._client_secret:
                 self._token = self._conn.root.authenticate(self._client_id, self._client_secret)
                 self._logger.info(f"认证成功: client_id={self._client_id}")
@@ -434,11 +321,6 @@ class XtQuantRemote:
         except Exception as e:
             self._connected = False
             raise ConnectionError(f"连接失败: {e}")
-    
-    def _start_callback_server(self):
-        if self._callback_server is None:
-            self._callback_server = CallbackServer(port=self._callback_port)
-        self._callback_server.start()
     
     def _ensure_connected(self):
         if self._connected and self._conn:
@@ -549,30 +431,6 @@ class XtQuantRemote:
     def get_index_list(self):
         self._ensure_connected()
         return self._conn.root.get_index_list(self._token)
-    
-    def subscribe_quote(self, stock_code: str, callback: Callable[[str, dict], None]) -> QuoteSubscription:
-        self._ensure_connected()
-        sub = QuoteSubscription(self, stock_code, callback)
-        self._subscriptions.append(sub)
-        sub.start()
-        return sub
-    
-    def unsubscribe_all(self):
-        for sub in self._subscriptions:
-            try:
-                sub.stop()
-            except:
-                pass
-        self._subscriptions.clear()
-    
-    def get_market_data_batch(self, stock_list: list, period: str = "1d",
-                               start_time: str = "", end_time: str = ""):
-        self._ensure_connected()
-        return self._conn.root.get_market_data_batch(stock_list, period, start_time, end_time)
-    
-    def get_full_tick_batch(self, stock_list: list):
-        self._ensure_connected()
-        return self._conn.root.get_full_tick_batch(stock_list)
 
     def download_history_data2(self, stock_list: list, period: str = "1d",
                                 start_time: str = "", end_time: str = "", incrementally: bool = None):
@@ -595,10 +453,10 @@ class XtQuantRemote:
         self._reconnect()
     
     def close(self):
-        self.unsubscribe_all()
         self._stop_heartbeat_thread()
-        if self._callback_server:
-            self._callback_server.stop()
+        if self._bg_thread:
+            self._bg_thread.stop()
+            self._bg_thread = None
         self._connected = False
         if self._conn:
             try:

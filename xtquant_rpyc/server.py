@@ -136,69 +136,6 @@ def _summarize_result(result: Any, max_len: int = 200) -> str:
         return "<unserializable>"
 
 
-# ==================== 回调管理器 ====================
-
-class CallbackManager:
-    """管理客户端注册的回调函数"""
-    
-    def __init__(self):
-        self._callbacks: Dict[str, Dict] = {}
-    
-    def register(self, callback_id: str, callback_ref, client_info: str = "unknown"):
-        self._callbacks[callback_id] = {
-            'ref': callback_ref,
-            'client_info': client_info,
-            'registered_at': time.time(),
-            'call_count': 0
-        }
-        logger.info(f"[Callback] 注册回调: {callback_id} | client={client_info}")
-    
-    def unregister(self, callback_id: str):
-        if callback_id in self._callbacks:
-            del self._callbacks[callback_id]
-        logger.info(f"[Callback] 注销回调: {callback_id}")
-    
-    def invoke(self, callback_id: str, *args, **kwargs):
-        callback_info = self._callbacks.get(callback_id)
-        if not callback_info:
-            logger.warning(f"[Callback] 回调不存在: {callback_id}")
-            return False
-        
-        callback_ref = callback_info['ref']
-        callback_info['call_count'] += 1
-        
-        try:
-            start_time = time.perf_counter()
-            callback_ref(*args, **kwargs)
-            elapsed_ms = (time.perf_counter() - start_time) * 1000
-            api_logger.debug(f"[Callback] 调用成功: {callback_id} | elapsed={elapsed_ms:.2f}ms")
-            return True
-        except Exception as e:
-            logger.error(f"[Callback] 调用失败: {callback_id} | error={e}")
-            self.unregister(callback_id)
-            return False
-    
-    def list_callbacks(self):
-        return {
-            cb_id: {
-                'client': info['client_info'],
-                'registered_at': info['registered_at'],
-                'call_count': info['call_count']
-            }
-            for cb_id, info in self._callbacks.items()
-        }
-    
-    def clear_client_callbacks(self, client_info: str):
-        to_remove = [cb_id for cb_id, info in self._callbacks.items() if info['client_info'] == client_info]
-        for cb_id in to_remove:
-            del self._callbacks[cb_id]
-        if to_remove:
-            logger.info(f"[Callback] 清理客户端回调: {client_info} | count={len(to_remove)}")
-
-
-callback_manager = CallbackManager()
-
-
 # ==================== 异常定义 ====================
 
 class AuthError(Exception):
@@ -293,7 +230,6 @@ class XtQuantService(rpyc.Service):
         logger.info(f"[断开] 客户端离开: {client_info}")
         if hasattr(self, '_token') and self._token and self._token in self._tokens:
             del self._tokens[self._token]
-        callback_manager.clear_client_callbacks(client_info)
     
     def _generate_token(self, client_id):
         timestamp = str(int(time.time()))
@@ -382,48 +318,9 @@ class XtQuantService(rpyc.Service):
         if token and not self._verify_token(token):
             raise AuthError("未授权访问")
         return self._xtdata.get_stock_list_in_sector("沪深指数")
-    
-    # ==================== 回调管理 ====================
-    
-    @log_api_call("register_callback")
-    def exposed_register_callback(self, callback_id: str, callback_ref):
-        callback_manager.register(callback_id, callback_ref, self._client_info)
-        return True
-    
-    @log_api_call("unregister_callback")
-    def exposed_unregister_callback(self, callback_id: str):
-        callback_manager.unregister(callback_id)
-        return True
-    
-    @log_api_call("list_callbacks")
-    def exposed_list_callbacks(self, token=None):
-        if token and not self._verify_token(token):
-            raise AuthError("未授权访问")
-        return callback_manager.list_callbacks()
-    
-    # ==================== 行情订阅 ====================
-    
-    @log_api_call("subscribe_quote")
-    def exposed_subscribe_quote(self, stock_code: str, callback_id: str):
-        def on_quote(data):
-            callback_manager.invoke(callback_id, stock_code, data)
-        return self._xtdata.subscribe_quote(stock_code, callback=on_quote)
-    
-    @log_api_call("unsubscribe_quote")
-    def exposed_unsubscribe_quote(self, stock_code: str):
-        return self._xtdata.unsubscribe_quote(stock_code)
-    
-    # ==================== 批量接口 ====================
-    
-    @log_api_call("get_market_data_batch")
-    def exposed_get_market_data_batch(self, stock_list: list, period: str = "1d",
-                                       start_time: str = "", end_time: str = ""):
-        return self._xtdata.get_market_data(stock_list, period=period, start_time=start_time, end_time=end_time)
-    
-    @log_api_call("get_full_tick_batch")
-    def exposed_get_full_tick_batch(self, stock_list: list):
-        return self._xtdata.get_full_tick(stock_list)
-    
+
+    # ==================== 服务端封装接口 ====================
+
     @log_api_call("download_history_data2")
     def exposed_download_history_data2(self, stock_list: list, period: str = "1d",
                                         start_time: str = "", end_time: str = "", incrementally: bool = None):
@@ -456,13 +353,8 @@ class XtQuantService(rpyc.Service):
 
         return status
 
-    @log_api_call("get_financial_data")
-    def exposed_get_financial_data(self, stock_list: list, table_list: list = None,
-                                   start_time: str = "", end_time: str = ""):
-        return self._xtdata.get_financial_data(stock_list, table_list or [], start_time, end_time)
-    
     # ==================== 服务状态 ====================
-    
+
     @log_api_call("get_service_status")
     def exposed_get_service_status(self, token=None):
         if token and not self._verify_token(token):
@@ -470,10 +362,8 @@ class XtQuantService(rpyc.Service):
         return {
             "uptime": time.time() - getattr(self, '_start_time', time.time()),
             "active_tokens": len(self._tokens),
-            "active_callbacks": len(callback_manager.list_callbacks()),
-            "callbacks": callback_manager.list_callbacks()
         }
-    
+
     @log_api_call("ping")
     def exposed_ping(self):
         return "pong"

@@ -3,6 +3,7 @@
 订阅实时行情推送示例
 
 展示如何通过 xtquant-rpyc 订阅股票实时行情推送。
+使用 netref + BgServingThread 实现异步回调。
 
 使用示例:
     # 订阅60秒（默认）
@@ -24,7 +25,6 @@ from xtquant_rpyc import XtQuantRemote
 
 # 全局变量用于优雅退出
 running = True
-subscriptions = []
 
 
 def signal_handler(signum, frame):
@@ -34,38 +34,48 @@ def signal_handler(signum, frame):
     running = False
 
 
-def on_quote(stock_code: str, datas: dict):
-    """
-    行情推送回调函数
+def make_callback(stock_code: str):
+    """为每只股票创建独立的回调函数"""
+    def on_quote(datas: dict):
+        """
+        行情推送回调函数
 
-    注意：原始 xtquant 的 subscribe_quote 回调格式是 {stock: [data1, data2, ...]}
-    我们的服务端封装后会传入 (stock_code, datas)，其中 datas 是 {stock_code: [tick_list]}
-    """
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        xtquant 的 subscribe_quote 回调格式是 {stock: [data1, data2, ...]}
+        """
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # datas 格式: {stock_code: [tick_data_list]}
-    tick_list = datas.get(stock_code, [])
-    if not tick_list:
-        return
+        # datas 格式: {stock_code: [tick_data_list]}
+        tick_list = datas.get(stock_code, [])
+        if not tick_list:
+            return
 
-    # 取最新的一个 tick 数据
-    data = tick_list[-1] if isinstance(tick_list, list) else tick_list
+        # 取最新的一个 tick 数据
+        data = tick_list[-1] if isinstance(tick_list, list) else tick_list
 
-    # 提取关键数据
-    last_price = data.get('lastPrice', 0) or 0
-    chg_ratio = data.get('chgRatio', 0) or 0
-    volume = data.get('volume', 0) or 0
-    amount = data.get('amount', 0) or 0
+        # 提取关键数据
+        last_price = data.get('lastPrice', 0) or 0
+        last_close = data.get('lastClose', 0) or 0
+        volume = data.get('volume', 0) or 0  # 手
+        pvolume = data.get('pvolume', 0) or 0  # 股
+        amount = data.get('amount', 0) or 0
 
-    # 涨跌幅符号
-    chg_sign = "+" if chg_ratio >= 0 else ""
+        # 手动计算涨跌幅（因为 get_full_tick 不返回 chgRatio）
+        if last_close > 0:
+            chg = last_price - last_close
+            chg_ratio = chg / last_close
+            chg_sign = "+" if chg >= 0 else ""
+        else:
+            chg_sign = ""
+            chg_ratio = 0
 
-    # 格式化输出
-    print(f"[{timestamp}] {stock_code:12s} | "
-          f"最新价: {last_price:8.3f} | "
-          f"涨跌幅: {chg_sign}{chg_ratio * 100:6.2f}% | "
-          f"成交量: {volume:>12,} | "
-          f"成交额: {amount:>15,.0f}")
+        # 格式化输出
+        print(f"[{timestamp}] {stock_code:12s} | "
+              f"最新价: {last_price:8.3f} | "
+              f"涨跌幅: {chg_sign}{chg_ratio * 100:6.2f}% | "
+              f"成交量: {pvolume:>12,} | "
+              f"成交额: {amount:>15,.0f}")
+
+    return on_quote
 
 
 def main():
@@ -117,10 +127,10 @@ def main():
         print(f"{'时间':^20} | {'股票代码':^12} | {'最新价':^10} | {'涨跌幅':^10} | {'成交量':^14} | {'成交额':^18}")
         print(f"{'='*80}")
 
-        # 订阅每只股票
+        # 直接通过 xt.xtdata 订阅（回调函数作为 netref 传递）
         for code in stock_codes:
-            sub = xt.subscribe_quote(code, on_quote)
-            subscriptions.append(sub)
+            xt.xtdata.subscribe_quote(code, callback=make_callback(code))
+            print(f"已订阅: {code}")
 
         # 等待
         if args.duration == 0:
@@ -133,14 +143,12 @@ def main():
             print(f"\n订阅 {args.duration} 秒...\n")
             time.sleep(args.duration)
 
-    finally:
         # 取消订阅
-        for sub in subscriptions:
-            try:
-                sub.stop()
-            except Exception:
-                pass
+        for code in stock_codes:
+            xt.xtdata.unsubscribe_quote(code)
+            print(f"已取消: {code}")
 
+    finally:
         xt.close()
         print("\n\n订阅已停止，连接已关闭")
 
