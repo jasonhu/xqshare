@@ -2,7 +2,7 @@
 """
 获取K线数据示例 (使用 get_market_data_ex)
 
-展示如何通过 xtquant-rpyc 获取股票的K线行情数据。
+展示如何通过 xqshare 获取股票的K线行情数据。
 get_market_data_ex 返回格式更直观：{stock: DataFrame}，DataFrame 的 index 为时间。
 
 使用示例:
@@ -19,7 +19,7 @@ get_market_data_ex 返回格式更直观：{stock: DataFrame}，DataFrame 的 in
 import argparse
 import os
 from datetime import datetime, timedelta
-from xtquant_rpyc import XtQuantRemote
+from xqshare import XtQuantRemote
 
 
 def main():

@@ -1,5 +1,5 @@
 """
-XtQuant RPyC Client Tests
+XtQuant Share (xqshare) Client Tests
 """
 
 import pytest
@@ -10,7 +10,7 @@ import time
 # Import the client module
 import sys
 sys.path.insert(0, '.')
-from xtquant_rpyc.client import (
+from xqshare.client import (
     XtQuantRemote,
     ConnectionError,
     AuthenticationError,
@@ -121,7 +121,7 @@ class TestRemoteModule:
 class TestXtQuantRemote:
     """测试主客户端类"""
     
-    @patch('xtquant_rpyc.client.rpyc.connect')
+    @patch('xqshare.client.rpyc.connect')
     def test_connect_without_auth(self, mock_connect):
         mock_conn = Mock()
         mock_conn.root.ping = Mock(return_value="pong")
@@ -132,7 +132,7 @@ class TestXtQuantRemote:
         mock_connect.assert_called_once()
         assert client._connected is True
     
-    @patch('xtquant_rpyc.client.rpyc.connect')
+    @patch('xqshare.client.rpyc.connect')
     def test_connect_with_auth(self, mock_connect):
         mock_conn = Mock()
         mock_conn.root.ping = Mock(return_value="pong")
@@ -149,7 +149,7 @@ class TestXtQuantRemote:
         mock_conn.root.authenticate.assert_called_once()
         assert client._token == "test_token"
     
-    @patch('xtquant_rpyc.client.rpyc.connect')
+    @patch('xqshare.client.rpyc.connect')
     def test_context_manager(self, mock_connect):
         mock_conn = Mock()
         mock_conn.root.ping = Mock(return_value="pong")
@@ -160,7 +160,7 @@ class TestXtQuantRemote:
         
         assert client._connected is False
     
-    @patch('xtquant_rpyc.client.rpyc.connect')
+    @patch('xqshare.client.rpyc.connect')
     def test_should_reconnect(self, mock_connect):
         mock_conn = Mock()
         mock_conn.root.ping = Mock(return_value="pong")
@@ -178,7 +178,7 @@ class TestXtQuantRemote:
         
         client.close()
     
-    @patch('xtquant_rpyc.client.rpyc.connect')
+    @patch('xqshare.client.rpyc.connect')
     def test_is_connected(self, mock_connect):
         mock_conn = Mock()
         mock_conn.root.ping = Mock(return_value="pong")
@@ -194,13 +194,13 @@ class TestXtQuantRemote:
 class TestGlobalFunctions:
     """测试全局便捷函数"""
     
-    @patch('xtquant_rpyc.client.rpyc.connect')
+    @patch('xqshare.client.rpyc.connect')
     def test_connect_disconnect(self, mock_connect):
         mock_conn = Mock()
         mock_conn.root.ping = Mock(return_value="pong")
         mock_connect.return_value = mock_conn
         
-        from xtquant_rpyc.client import connect, disconnect, get_client
+        from xqshare.client import connect, disconnect, get_client
         
         client = connect(host="localhost", auto_reconnect=False)
         assert client is not None

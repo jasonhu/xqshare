@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "xtquant-rpyc"
+name = "xqshare"
 version = "1.0.0"
-description = "Transparent remote proxy for xtquant library - use xtquant on macOS/Linux via Windows server"
+description = "XtQuant Share - Transparent remote proxy for xtquant library on macOS/Linux"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -50,18 +50,18 @@ dev = [
 ]
 
 [project.scripts]
-xtdata = "xtquant_rpyc.tools.xtdata:main"
-xttrader = "xtquant_rpyc.tools.xttrader:main"
+xtdata = "xqshare.tools.xtdata:main"
+xttrader = "xqshare.tools.xttrader:main"
 
 [project.urls]
-Homepage = "https://gitee.com/jdragonhu/xtquant-rpyc"
-Documentation = "https://gitee.com/jdragonhu/xtquant-rpyc#readme"
-Repository = "https://gitee.com/jdragonhu/xtquant-rpyc"
-Issues = "https://gitee.com/jdragonhu/xtquant-rpyc/issues"
+Homepage = "https://gitee.com/jdragonhu/xqshare"
+Documentation = "https://gitee.com/jdragonhu/xqshare#readme"
+Repository = "https://gitee.com/jdragonhu/xqshare"
+Issues = "https://gitee.com/jdragonhu/xqshare/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["xtquant_rpyc*"]
+include = ["xqshare*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.md", "*.txt"]

@@ -2,7 +2,7 @@
 """
 获取实时行情示例
 
-展示如何通过 xtquant-rpyc 获取股票的实时tick数据。
+展示如何通过 xqshare 获取股票的实时tick数据。
 
 使用示例:
     # 获取单只股票实时行情
@@ -14,7 +14,7 @@
 
 import argparse
 import os
-from xtquant_rpyc import XtQuantRemote
+from xqshare import XtQuantRemote
 
 
 def format_tick_info(code: str, tick: dict) -> str:

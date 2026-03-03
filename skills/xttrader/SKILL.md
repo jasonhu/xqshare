@@ -1,6 +1,6 @@
 ---
 name: xttrader
-description: xtquant-rpyc 交易命令行工具，查询持仓、资产、下单、撤单等
+description: xqshare 交易命令行工具，查询持仓、资产、下单、撤单等
 ---
 
 # xttrader - 交易工具
@@ -17,7 +17,7 @@ description: xtquant-rpyc 交易命令行工具，查询持仓、资产、下单
 **原因**：
 - xtquant 只能在 Windows 上运行
 - 本地环境（macOS/Linux）无法直接调用 xtquant
-- 必须通过 xtquant-rpyc 的命令行工具远程调用
+- 必须通过 xqshare 的命令行工具远程调用
 
 ## 使用场景
 
@@ -34,16 +34,16 @@ description: xtquant-rpyc 交易命令行工具，查询持仓、资产、下单
 | 组件 | 要求 | 说明 |
 |------|------|------|
 | Windows 服务器 | 必需 | xtquant 只能运行在 Windows |
-| xtquant-rpyc 服务端 | 必需运行 | 在 Windows 上启动远程服务 |
+| xqshare 服务端 | 必需运行 | 在 Windows 上启动远程服务 |
 
 **本 skill 假设**：
 - Windows 上已配置好 xtquant 环境（含 miniQMT）
-- xtquant-rpyc 服务端已启动并可访问
+- xqshare 服务端已启动并可访问
 - 环境变量已正确配置
 
 ## 客户端配置
 
-- 已安装 xtquant-rpyc：`pip install xtquant-rpyc`
+- 已安装 xqshare：`pip install xqshare`
 - 已配置环境变量：
   ```bash
   export XTQUANT_REMOTE_HOST="192.168.1.100"

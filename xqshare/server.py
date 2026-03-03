@@ -1,5 +1,5 @@
 """
-XtQuant RPyC Server - Run on Windows to provide xtquant proxy service
+XtQuant Share (xqshare) Server - Run on Windows to provide xtquant proxy service
 """
 
 import rpyc
@@ -392,7 +392,7 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
     XtQuantService._start_time = time.time()
     
     print("=" * 70)
-    print("  XtQuant RPyC 服务")
+    print("  XtQuant Share (xqshare) 服务")
     print("=" * 70)
     print(f"  监听地址: {host}:{port}")
     print(f"  SSL 加密: {'启用' if use_ssl else '禁用'}")
@@ -469,7 +469,7 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description="XtQuant RPyC 服务")
+    parser = argparse.ArgumentParser(description="XtQuant Share (xqshare) 服务")
     parser.add_argument("--host", default="0.0.0.0", help="监听地址")
     parser.add_argument("--port", type=int, default=None, help="监听端口 (默认: 18812 或 XTQUANT_PORT)")
     parser.add_argument("--ssl", action="store_true", help="启用 SSL 加密")

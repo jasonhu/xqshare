@@ -1,5 +1,5 @@
 """
-XtQuant RPyC Server Tests
+XtQuant Share (xqshare) Server Tests
 """
 
 import pytest
@@ -13,10 +13,10 @@ sys.path.insert(0, '.')
 
 
 # Initialize logging before importing server
-from xtquant_rpyc.server import _init_logging
+from xqshare.server import _init_logging
 _init_logging("WARNING")  # Quiet logs for tests
 
-from xtquant_rpyc.server import (
+from xqshare.server import (
     XtQuantService,
     CallbackManager,
     AuthError,
@@ -202,7 +202,7 @@ class TestSSLContext:
         ctx = create_ssl_context(None, None)
         assert ctx is None
     
-    @patch('xtquant_rpyc.server.ssl.SSLContext')
+    @patch('xqshare.server.ssl.SSLContext')
     def test_create_ssl_context_with_files(self, mock_ssl_context):
         mock_ctx = Mock()
         mock_ssl_context.return_value = mock_ctx

@@ -2,7 +2,7 @@
 """
 获取股票列表示例
 
-展示如何通过 xtquant-rpyc 获取指定板块的股票列表。
+展示如何通过 xqshare 获取指定板块的股票列表。
 
 使用示例:
     # 获取沪深A股列表
@@ -17,7 +17,7 @@
 
 import argparse
 import os
-from xtquant_rpyc import XtQuantRemote
+from xqshare import XtQuantRemote
 
 
 def main():

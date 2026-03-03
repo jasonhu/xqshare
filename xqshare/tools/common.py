@@ -27,10 +27,10 @@ def create_client(host=None, port=None, secret=None, client_id=None, quiet=True)
     """
     if quiet:
         # 在导入前设置静默模式
-        from xtquant_rpyc.client import set_quiet_mode
+        from xqshare.client import set_quiet_mode
         set_quiet_mode(True)
 
-    from xtquant_rpyc import XtQuantRemote
+    from xqshare import XtQuantRemote
 
     h = host or os.environ.get(ENV_HOST, "localhost")
     p = port or int(os.environ.get(ENV_PORT, "18812"))

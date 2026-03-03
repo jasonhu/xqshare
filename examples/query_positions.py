@@ -2,7 +2,7 @@
 """
 查询账户持仓示例
 
-展示如何通过 xtquant-rpyc 查询交易账户的持仓信息。
+展示如何通过 xqshare 查询交易账户的持仓信息。
 
 注意:
   - 需要先在 Windows 上安装并运行迅投极速交易客户端
@@ -32,7 +32,7 @@
 import argparse
 import os
 import time
-from xtquant_rpyc import XtQuantRemote
+from xqshare import XtQuantRemote
 
 
 # 账户类型映射

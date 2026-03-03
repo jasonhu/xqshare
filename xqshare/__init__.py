@@ -1,5 +1,5 @@
 """
-XtQuant RPyC - Transparent remote proxy for xtquant library
+XtQuant Share (xqshare) - Transparent remote proxy for xtquant library
 
 Allows using xtquant on macOS/Linux by proxying calls to a Windows server.
 """

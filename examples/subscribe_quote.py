@@ -2,7 +2,7 @@
 """
 订阅实时行情推送示例
 
-展示如何通过 xtquant-rpyc 订阅股票实时行情推送。
+展示如何通过 xqshare 订阅股票实时行情推送。
 使用 netref + BgServingThread 实现异步回调。
 
 使用示例:
@@ -22,7 +22,7 @@ import signal
 import sys
 import os
 from datetime import datetime
-from xtquant_rpyc import XtQuantRemote
+from xqshare import XtQuantRemote
 
 # 全局变量用于优雅退出
 running = True

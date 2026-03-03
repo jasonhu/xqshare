@@ -2,7 +2,7 @@
 """
 下载历史数据示例
 
-展示如何通过 xtquant-rpyc 下载股票历史数据到服务端本地。
+展示如何通过 xqshare 下载股票历史数据到服务端本地。
 下载数据后，get_market_data 等函数才能获取到数据。
 
 使用示例:
@@ -22,7 +22,7 @@
 import argparse
 import os
 from datetime import datetime, timedelta
-from xtquant_rpyc import XtQuantRemote
+from xqshare import XtQuantRemote
 
 
 # 默认股票代码

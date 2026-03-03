@@ -1,5 +1,5 @@
 """
-XtQuant RPyC Client - Transparent remote proxy for xtquant
+XtQuant Share (xqshare) Client - Transparent remote proxy for xtquant
 """
 
 import os

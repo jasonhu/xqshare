@@ -2,7 +2,7 @@
 """
 获取K线数据示例
 
-展示如何通过 xtquant-rpyc 获取股票的K线行情数据。
+展示如何通过 xqshare 获取股票的K线行情数据。
 
 使用示例:
     # 获取日K线（默认近30天）
@@ -21,7 +21,7 @@
 import argparse
 import os
 from datetime import datetime, timedelta
-from xtquant_rpyc import XtQuantRemote
+from xqshare import XtQuantRemote
 
 
 def main():
