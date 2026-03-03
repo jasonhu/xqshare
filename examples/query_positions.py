@@ -5,7 +5,7 @@
 展示如何通过 xqshare 查询交易账户的持仓信息。
 
 注意:
-  - 需要先在 Windows 上安装并运行迅投极速交易客户端
+  - 需要先在 Windows 上安装并运行 QMT 交易客户端
   - 需要提供客户端的 userdata 路径
 
 环境变量:
@@ -13,17 +13,17 @@
   XTQUANT_REMOTE_PORT     - 服务端端口
   XTQUANT_CLIENT_SECRET   - 认证密钥
   XTQUANT_ACCOUNT_ID      - 资金账号
-  XTQUANT_USERDATA_PATH   - 迅投QMT客户端 userdata_mini 目录路径
+  XTQUANT_USERDATA_PATH   - QMT客户端 userdata_mini 目录路径
 
 使用示例:
     # 使用环境变量配置（推荐）
     export XTQUANT_REMOTE_HOST="192.168.1.100"
     export XTQUANT_ACCOUNT_ID="12345678"
-    export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"
+    export XTQUANT_USERDATA_PATH="C:\\QMT\\userdata_mini"
     python examples/query_positions.py
 
     # 命令行参数（覆盖环境变量）
-    python examples/query_positions.py --account-id "12345678" --path "C:\\迅投QMT交易端\\userdata_mini"
+    python examples/query_positions.py --account-id "12345678" --path "C:\\QMT\\userdata_mini"
 
     # 查询信用账户持仓
     python examples/query_positions.py --account-type CREDIT
@@ -128,7 +128,7 @@ def main():
   SHENGANGTONG - 深港通
 
 注意:
-  - path 参数是迅投QMT客户端的 userdata_mini 目录路径
+  - path 参数是 QMT 客户端的 userdata_mini 目录路径
   - 资金账号需要与服务端配置的券商账户一致
   - 交易功能需要在 Windows 服务端正确配置券商接口
         """
@@ -140,7 +140,7 @@ def main():
     parser.add_argument("--account-type", default="STOCK",
                         choices=list(ACCOUNT_TYPES.keys()),
                         help=f"账户类型 (默认: STOCK)")
-    parser.add_argument("--path", help="迅投QMT客户端 userdata_mini 目录路径 (默认: 环境变量 XTQUANT_USERDATA_PATH)")
+    parser.add_argument("--path", help="QMT客户端 userdata_mini 目录路径 (默认: 环境变量 XTQUANT_USERDATA_PATH)")
 
     args = parser.parse_args()
 
@@ -158,7 +158,7 @@ def main():
         print("错误: 必须提供 userdata_mini 目录路径")
         print("  方式1: 设置环境变量 XTQUANT_USERDATA_PATH")
         print("  方式2: 使用 --path 参数")
-        print("  示例: --path \"C:\\\\迅投QMT交易端\\\\userdata_mini\"")
+        print("  示例: --path \"C:\\\\QMT\\\\userdata_mini\"")
         return
 
     # 连接服务端（支持环境变量）

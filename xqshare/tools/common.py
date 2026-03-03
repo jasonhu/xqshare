@@ -190,7 +190,7 @@ def add_global_args(parser):
 
 def add_trader_args(parser):
     """添加交易相关参数"""
-    parser.add_argument("--userdata-path", help="迅投QMT客户端 userdata_mini 目录路径 (环境变量: XTQUANT_USERDATA_PATH)")
+    parser.add_argument("--userdata-path", help="QMT客户端 userdata_mini 目录路径 (环境变量: XTQUANT_USERDATA_PATH)")
     parser.add_argument("--account-id", help="资金账号 (环境变量: XTQUANT_ACCOUNT_ID)")
     parser.add_argument("--account-type", default="STOCK", choices=["STOCK", "CREDIT", "FUTURE", "HUGANGTONG", "SHENGANGTONG"],
                         help="账户类型 (默认: STOCK)")

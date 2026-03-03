@@ -96,7 +96,7 @@ xt.close()
 **交易功能（可选）：**
 ```bash
 export XTQUANT_ACCOUNT_ID="12345678"
-export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"
+export XTQUANT_USERDATA_PATH="C:\\QMT\\userdata_mini"
 ```
 
 ---
@@ -189,7 +189,7 @@ python examples/subscribe_quote.py --codes "000001.SZ" --duration 60
 ```bash
 # 设置交易相关环境变量
 export XTQUANT_ACCOUNT_ID="12345678"
-export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"
+export XTQUANT_USERDATA_PATH="C:\\QMT\\userdata_mini"
 
 # 查询持仓
 python examples/query_positions.py

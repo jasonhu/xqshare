@@ -11,7 +11,7 @@ xttrader - 交易命令行工具
 
 使用示例:
     # 查询持仓
-    xttrader --account-id "12345678" --userdata-path "C:\\\\迅投QMT\\\\userdata_mini" query_stock_positions
+    xttrader --account-id "12345678" --userdata-path "C:\\\\QMT\\\\userdata_mini" query_stock_positions
 
     # 查询资产
     xttrader --account-id "12345678" query_stock_asset
