@@ -665,7 +665,7 @@ logs/
 
 **日志文件位置：**
 ```
-~/.xtquant/logs/client_20260228.log
+logs/client_20260228.log
 ```
 
 **客户端也会记录调用：**
@@ -960,7 +960,7 @@ python -c "from xqshare import XtQuantRemote; print('OK')"
 tail -f logs/api_calls_*.log
 
 # 客户端
-tail -f ~/.xtquant/logs/client_*.log
+tail -f logs/client_*.log
 ```
 
 ### 连接失败
