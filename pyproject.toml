@@ -7,7 +7,7 @@ name = "xqshare"
 version = "1.0.0"
 description = "XtQuant Share - Transparent remote proxy for xtquant library on macOS/Linux"
 readme = "README.md"
-license = "MIT"
+license = "GPL-3.0-only"
 license-files = ["LICENSE"]
 requires-python = ">=3.8"
 authors = [
