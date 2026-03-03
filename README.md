@@ -51,83 +51,52 @@ pip install rpyc
 
 ### 1. Windows 服务端
 
+**环境变量：**
 ```bash
-# 基础启动
-python -m xqshare.server
-
-# 自定义端口
-python -m xqshare.server --port 18813
-
-# 启用 SSL
-python -m xqshare.server --ssl --cert server.crt --key server.key
-
-# 调整日志级别
-python -m xqshare.server --log-level DEBUG
+export XTQUANT_PORT="18812"                    # 监听端口
+export XTQUANT_LOG_DIR="logs"                  # 日志目录
+export XTQUANT_CLIENT_SECRET="default-secret"  # 认证密钥
+# export XTQUANT_CLIENT_app1="xxx"             # 特定客户端密钥
 ```
 
-**环境变量配置（推荐）:**
-
-服务端:
+**启动命令：**
 ```bash
-export XTQUANT_PORT="18812"              # 监听端口
-export XTQUANT_LOG_DIR="logs"            # 日志目录
-export XTQUANT_CLIENT_SECRET="default-secret"  # 默认认证密钥
-# export XTQUANT_CLIENT_app1="xxx"   # 特定客户端密钥（可选）
-```
-
-客户端:
-```bash
-export XTQUANT_REMOTE_HOST="192.168.1.100"   # 服务端地址
-export XTQUANT_REMOTE_PORT="18812"           # 服务端端口
-export XTQUANT_CLIENT_SECRET="your-secret"   # 认证密钥
-# export XTQUANT_CLIENT_ID="my-app"        # 客户端标识（可选）
-```
-
-交易功能（需要资金账号和QMT路径）:
-```bash
-export XTQUANT_ACCOUNT_ID="12345678"              # 资金账号
-export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"  # QMT路径
+python -m xqshare.server                    # 基础启动
+python -m xqshare.server --port 18813       # 自定义端口
+python -m xqshare.server --log-level DEBUG  # 调整日志级别
 ```
 
 ### 2. macOS/Linux 客户端
 
+**环境变量：**
+```bash
+export XTQUANT_REMOTE_HOST="192.168.1.100"     # 服务端地址
+export XTQUANT_REMOTE_PORT="18812"             # 服务端端口
+export XTQUANT_CLIENT_SECRET="your-secret"     # 认证密钥
+# export XTQUANT_CLIENT_ID="my-app"            # 客户端标识
+```
+
+**使用示例：**
 ```python
 from xqshare import XtQuantRemote
 
 # 方式1：使用环境变量（推荐）
-# 需要先设置环境变量：
-#   export XTQUANT_REMOTE_HOST="192.168.1.100"
-#   export XTQUANT_CLIENT_SECRET="your-secret"
-xt = XtQuantRemote()  # 自动读取环境变量
+xt = XtQuantRemote()
 
-# 方式2：显式参数（覆盖环境变量）
-xt = XtQuantRemote(
-    host="192.168.1.100",
-    port=18812,
-    client_secret="default-secret",
-    auto_reconnect=True,
-    log_level="DEBUG",
-)
+# 方式2：显式参数
+xt = XtQuantRemote("192.168.1.100", client_secret="xxx")
 
-# ========== 使用方式与本地 xtquant 完全一致 ==========
-
-# 获取股票列表
+# 使用方式与本地 xtquant 完全一致
 stocks = xt.xtdata.get_stock_list_in_sector("沪深A股")
-print(f"股票数量: {len(stocks)}")
-
-# 获取行情数据
-df = xt.xtdata.get_market_data(
-    ["000001.SZ", "600000.SH"],
-    period="1d",
-    start_time="20260101"
-)
-print(df)
-
-# 获取实时 tick
+df = xt.xtdata.get_market_data(["000001.SZ"], period="1d")
 ticks = xt.xtdata.get_full_tick(["000001.SZ"])
-
-# 关闭连接
 xt.close()
+```
+
+**交易功能（可选）：**
+```bash
+export XTQUANT_ACCOUNT_ID="12345678"
+export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"
 ```
 
 ---
@@ -242,82 +211,22 @@ python examples/get_stock_list.py --help
 
 ## API 文档
 
-### 客户端类 `XtQuantRemote`
-
-#### 构造函数
-
 ```python
-XtQuantRemote(
-    host="localhost",           # 服务端地址
-    port=18812,                 # 服务端端口
-    client_id="default",        # 客户端标识
-    client_secret="",           # 认证密钥
-    use_ssl=False,              # 启用 SSL
-    ssl_verify=True,            # 验证 SSL 证书
-    auto_reconnect=True,        # 自动重连
-    max_retries=5,              # 最大重试次数
-    heartbeat_interval=30,      # 心跳间隔(秒)
-    log_level="INFO",           # 日志级别
-    callback_port=0,            # 回调服务器端口(0=自动)
-)
-```
+from xqshare import XtQuantRemote, connect, disconnect, xtdata, xttrader, xttype
 
-#### 属性
+# 方式1：类实例（推荐）
+with XtQuantRemote("192.168.1.100", client_secret="xxx") as xt:
+    stocks = xt.xtdata.get_stock_list_in_sector("沪深A股")
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `xtdata` | RemoteModule | xtquant.xtdata 模块代理 |
-| `xttrader` | RemoteModule | xtquant.xttrader 模块代理 |
-| `xttype` | RemoteModule | xtquant.xttype 模块代理（账户类型等） |
-
-#### 方法
-
-| 方法 | 说明 |
-|------|------|
-| `is_connected()` | 检查连接状态 |
-| `reconnect()` | 手动重连 |
-| `close()` | 关闭连接 |
-| `get_service_status()` | 获取服务端状态 |
-| `get_all_stocks()` | 获取沪深A股列表 |
-| `get_index_list()` | 获取指数列表 |
-| `create_trader()` | 创建交易实例 |
-| `download_history_data2(stock_list, period, ...)` | 下载历史数据（服务端封装版本） |
-
-### 全局便捷函数
-
-```python
-from xqshare import connect, disconnect, get_client, xtdata, xttrader, xttype
-
-# 方式1：使用环境变量（推荐）
-# 需要先设置: export XTQUANT_REMOTE_HOST="192.168.1.100"
-connect()
-
-# 方式2：显式参数（覆盖环境变量）
-# connect(host="192.168.1.100", client_secret="my-secret")
-
-# 直接使用模块
+# 方式2：全局便捷函数
+connect(host="192.168.1.100", client_secret="xxx")
 stocks = xtdata.get_stock_list_in_sector("沪深A股")
-
-# 创建账户对象
-account = xttype.StockAccount("资金账号", "STOCK")
-
-# 查询持仓
-positions = xttrader.query_stock_positions(account)
-
-# 获取客户端实例
-client = get_client()
-
-# 断开连接
 disconnect()
 ```
 
-### 异常类
+**核心属性：** `xt.xtdata`（行情）、`xt.xttrader`（交易）、`xt.xttype`（类型）
 
-| 异常 | 说明 |
-|------|------|
-| `ConnectionError` | 连接错误 |
-| `AuthenticationError` | 认证错误 |
-| `CallbackError` | 回调错误 |
+详细 API 请查看 [xqshare/client.py](xqshare/client.py) 源码。
 
 ---
 
@@ -457,18 +366,7 @@ xt = XtQuantRemote("192.168.1.100", log_level="DEBUG")
 
 ## 认证机制
 
-### 基础认证
-
-服务端：
-```bash
-export XTQUANT_CLIENT_SECRET="my-shared-secret"
-python -m xqshare.server
-```
-
-客户端：
-```python
-xt = XtQuantRemote(host="...", client_secret="my-shared-secret")
-```
+服务端和客户端需要配置相同的密钥，详见上方"环境变量配置"。
 
 ### 多客户端认证
 
@@ -480,8 +378,8 @@ export XTQUANT_CLIENT_app2="secret-for-app2"
 
 客户端：
 ```python
-xt1 = XtQuantRemote(host="...", client_id="app1", client_secret="secret-for-app1")
-xt2 = XtQuantRemote(host="...", client_id="app2", client_secret="secret-for-app2")
+xt1 = XtQuantRemote(client_id="app1", client_secret="secret-for-app1")
+xt2 = XtQuantRemote(client_id="app2", client_secret="secret-for-app2")
 ```
 
 ---
