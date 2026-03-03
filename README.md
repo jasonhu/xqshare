@@ -821,7 +821,7 @@ xqshare/
 ├── README.md               # 文档
 ├── pyproject.toml          # 包配置
 ├── pytest.ini              # 测试配置
-└── LICENSE                 # MIT 许可证
+└── LICENSE                 # GPLv3 许可证
 ```
 
 ---
@@ -984,4 +984,4 @@ print(status)
 
 ## License
 
-MIT License
+GNU General Public License v3.0
