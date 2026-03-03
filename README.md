@@ -87,7 +87,9 @@ export XTQUANT_CLIENT_SECRET="your-secret"   # 认证密钥
 ```bash
 export XTQUANT_ACCOUNT_ID="12345678"              # 资金账号
 export XTQUANT_USERDATA_PATH="C:\\迅投QMT交易端\\userdata_mini"  # QMT路径
-```### 2. macOS/Linux 客户端
+```
+
+### 2. macOS/Linux 客户端
 
 ```python
 from xqshare import XtQuantRemote
@@ -188,9 +190,9 @@ xttrader --account-id "12345678" order_stock --stock-code "000001.SZ" --order-ty
 
 ---
 
-## 命令行示例
+## 示例脚本
 
-项目提供了命令行工具，位于 `examples/` 目录，方便快速测试。
+项目提供了示例脚本，位于 `examples/` 目录，方便快速测试。
 
 **推荐：使用环境变量配置（避免敏感信息泄露）**
 ```bash
@@ -279,10 +281,7 @@ XtQuantRemote(
 | `get_all_stocks()` | 获取沪深A股列表 |
 | `get_index_list()` | 获取指数列表 |
 | `create_trader()` | 创建交易实例 |
-| `subscribe_quote(stock_code, callback)` | 订阅行情 |
-| `unsubscribe_all()` | 取消所有订阅 |
-| `get_market_data_batch(stock_list, ...)` | 批量获取行情 |
-| `get_full_tick_batch(stock_list)` | 批量获取 tick |
+| `download_history_data2(stock_list, period, ...)` | 下载历史数据（服务端封装版本） |
 
 ### 全局便捷函数
 
@@ -324,145 +323,39 @@ disconnect()
 
 ## 使用示例
 
-### 基础数据获取
-
 ```python
 from xqshare import XtQuantRemote
 
 with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
     # 获取股票列表
-    all_stocks = xt.xtdata.get_stock_list_in_sector("沪深A股")
-    print(f"沪深A股数量: {len(all_stocks)}")
-    
-    # 获取指数成分股
-    hs300 = xt.xtdata.get_stock_list_in_sector("沪深300")
-    print(f"沪深300成分股: {len(hs300)}")
-    
-    # 获取板块列表
-    sectors = xt.xtdata.get_sector_list()
-    for sector in sectors[:5]:
-        print(f"板块: {sector}")
-```
+    stocks = xt.xtdata.get_stock_list_in_sector("沪深A股")
+    print(f"股票数量: {len(stocks)}")
 
-### K线数据获取
-
-```python
-from xqshare import XtQuantRemote
-import pandas as pd
-
-with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
-    # 获取日K线
+    # 获取K线数据
     df = xt.xtdata.get_market_data(
         stock_list=["000001.SZ", "600000.SH"],
         period="1d",
-        start_time="20250101",
-        end_time="20251231"
+        start_time="20260101"
     )
     print(df)
-    
-    # 获取分钟K线
-    df_1m = xt.xtdata.get_market_data(
-        stock_list=["000001.SZ"],
-        period="1m",
-        start_time="20250228"
-    )
-    
-    # 获取分笔数据
-    ticks = xt.xtdata.get_full_tick(["000001.SZ", "600000.SH"])
-    for code, tick in ticks.items():
-        print(f"{code}: 最新价={tick.get('lastPrice')}, 成交量={tick.get('volume')}")
+
+    # 获取实时行情
+    ticks = xt.xtdata.get_full_tick(["000001.SZ"])
+    print(ticks)
 ```
 
-### 财务数据获取
+**更多示例请查看 [examples/](examples/) 目录：**
 
-```python
-from xqshare import XtQuantRemote
+| 文件 | 功能 |
+|------|------|
+| `get_stock_list.py` | 获取股票列表 |
+| `download_history_data2.py` | 下载历史数据 |
+| `get_market_data_ex.py` | 获取K线数据 |
+| `get_tick_data.py` | 获取实时行情 |
+| `subscribe_quote.py` | 订阅行情推送 |
+| `query_positions.py` | 查询账户持仓 |
 
-with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
-    # 获取财务数据
-    financial_data = xt.xtdata.get_financial_data(
-        stock_list=["000001.SZ"],
-        table_list=["Balance", "Income", "CashFlow"],
-        start_time="20240101",
-        end_time="20241231"
-    )
-    print(financial_data)
-```
-
-### 实时行情订阅
-
-```python
-from xqshare import XtQuantRemote
-import time
-
-def on_quote(stock_code: str, data: dict):
-    """行情推送回调"""
-    print(f"[{stock_code}] 最新价: {data.get('lastPrice')} | "
-          f"成交量: {data.get('volume')} | "
-          f"涨跌幅: {data.get('chgRatio', 0) * 100:.2f}%")
-
-with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
-    # 订阅多只股票
-    stocks = ["000001.SZ", "600000.SH", "000002.SZ"]
-    
-    subscriptions = []
-    for stock in stocks:
-        sub = xt.subscribe_quote(stock, on_quote)
-        subscriptions.append(sub)
-    
-    print("已订阅行情，按 Ctrl+C 停止...")
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
-    
-    # 停止订阅
-    for sub in subscriptions:
-        sub.stop()
-```
-
-### 使用上下文管理器订阅
-
-```python
-from xqshare import XtQuantRemote
-import time
-
-with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
-    # 使用上下文管理器自动管理订阅
-    with xt.subscribe_quote("000001.SZ", lambda c, d: print(f"{c}: {d.get('lastPrice')}")):
-        print("订阅中，60秒后自动取消...")
-        time.sleep(60)
-    # 自动取消订阅
-```
-
-### 交易示例
-
-#### 查询账户持仓
-
-```python
-from xqshare import XtQuantRemote
-
-with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
-    # 创建账户对象（通过 xttype 代理）
-    # account_type: STOCK(股票), CREDIT(信用), FUTURE(期货) 等
-    account = xt.xttype.StockAccount("你的资金账号", "STOCK")
-
-    # 查询持仓
-    positions = xt.xttrader.query_stock_positions(account)
-
-    # 遍历持仓
-    for pos in positions:
-        print(f"股票: {pos.stock_code}")
-        print(f"  持仓数量: {pos.volume}")
-        print(f"  可用数量: {pos.can_use_volume}")
-        print(f"  成本价: {pos.avg_price}")
-        print(f"  市值: {pos.market_value}")
-        print(f"  盈亏比例: {pos.profit_rate * 100:.2f}%")
-        print("---")
-```
-
-#### 账户类型说明
+### 账户类型
 
 | account_type | 说明 |
 |--------------|------|
@@ -471,158 +364,6 @@ with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
 | `FUTURE` | 期货账户 |
 | `HUGANGTONG` | 沪港通 |
 | `SHENGANGTONG` | 深港通 |
-
-#### 完整交易流程
-
-```python
-from xqshare import XtQuantRemote
-
-with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
-    # 创建账户对象
-    account = xt.xttype.StockAccount("资金账号", "STOCK")
-
-    # 创建交易实例
-    trader = xt.create_trader()
-
-    # 连接交易账户（根据券商配置）
-    # trader.connect(account_id, account_key, server_ip)
-
-    # 查询资产
-    # asset = trader.query_stock_asset(account)
-
-    # 查询持仓
-    positions = xt.xttrader.query_stock_positions(account)
-
-    # 下单买入
-    # order_id = xt.xttrader.order_stock(
-    #     account=account,
-    #     stock_code="000001.SZ",
-    #     order_type=23,       # 23=买入, 24=卖出
-    #     order_volume=100,    # 股票以"股"为单位
-    #     price_type=11,       # 11=限价, 12=市价
-    #     price=10.0,
-    #     strategy_name="my_strategy",
-    #     order_remark="test_order"
-    # )
-
-    # 查询订单
-    # orders = xt.xttrader.query_stock_orders(account)
-
-    # 撤单
-    # xt.xttrader.cancel_order(account, order_id)
-```
-
-### 批量数据获取
-
-```python
-from xqshare import XtQuantRemote
-
-with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
-    # 批量获取行情（一次网络请求）
-    stock_list = xt.get_all_stocks()[:100]  # 取前100只
-    
-    data = xt.get_market_data_batch(
-        stock_list=stock_list,
-        period="1d",
-        start_time="20250101"
-    )
-    print(f"获取数据: {len(data)} 条")
-    
-    # 批量获取 tick
-    ticks = xt.get_full_tick_batch(stock_list[:50])
-    print(f"获取 tick: {len(ticks)} 只股票")
-```
-
-### 多客户端场景
-
-```python
-from xqshare import XtQuantRemote
-
-# 配置服务端环境变量:
-# export XTQUANT_CLIENT_app1="secret-app1"
-# export XTQUANT_CLIENT_app2="secret-app2"
-
-# 不同应用使用不同客户端ID和密钥
-client1 = XtQuantRemote(
-    host="192.168.1.100",
-    client_id="app1",
-    client_secret="secret-app1"
-)
-
-client2 = XtQuantRemote(
-    host="192.168.1.100",
-    client_id="app2",
-    client_secret="secret-app2"
-)
-
-# 各自独立操作
-stocks1 = client1.xtdata.get_stock_list_in_sector("沪深A股")
-stocks2 = client2.xtdata.get_stock_list_in_sector("创业板")
-
-client1.close()
-client2.close()
-```
-
----
-
-## 异步回调（行情订阅）
-
-支持服务端主动推送数据到客户端，适用于实时行情订阅场景。
-
-### 服务端日志（自动记录）
-
-```
-2026-02-28 23:45:12.345 | INFO     | api | [CALL] get_market_data | client=my-app@192.168.1.50 | args=(['000001.SZ', '600000.SH'],) | kwargs={'period': '1d'}
-2026-02-28 23:45:12.456 | INFO     | api | [OK] get_market_data | elapsed=111.23ms | result=DataFrame[shape=(100, 6)]
-2026-02-28 23:45:15.123 | INFO     | api | [CALL] get_full_tick | client=my-app@192.168.1.50 | args=(['000001.SZ'],) | kwargs={}
-2026-02-28 23:45:15.145 | INFO     | api | [OK] get_full_tick | elapsed=22.11ms | result=dict{000001.SZ}
-```
-
-### 客户端使用回调
-
-```python
-from xqshare import XtQuantRemote
-
-# 连接
-xt = XtQuantRemote("192.168.1.100", client_secret="my-secret")
-
-# 定义回调函数
-def on_quote(stock_code, data):
-    """行情推送回调"""
-    print(f"行情推送: {stock_code}")
-    print(f"  最新价: {data.get('lastPrice')}")
-    print(f"  成交量: {data.get('volume')}")
-
-# 订阅行情
-subscription = xt.subscribe_quote("000001.SZ", on_quote)
-
-print("已订阅，等待行情推送...")
-try:
-    # 主线程可以做其他事情
-    import time
-    while True:
-        time.sleep(1)
-except KeyboardInterrupt:
-    pass
-
-# 停止订阅
-subscription.stop()
-xt.close()
-```
-
-### 使用上下文管理器
-
-```python
-from xqshare import XtQuantRemote
-
-with XtQuantRemote("192.168.1.100") as xt:
-    # 订阅行情
-    with xt.subscribe_quote("000001.SZ", lambda code, data: print(f"{code}: {data}")):
-        import time
-        time.sleep(60)  # 运行1分钟
-    # 自动取消订阅
-# 自动关闭连接
-```
 
 ---
 
@@ -923,20 +664,6 @@ pip install xqshare
 
 # 验证安装
 python -c "from xqshare import XtQuantRemote; print('OK')"
-```
-
----
-
-## 日志文件
-
-```
-服务端:
-  logs/
-  ├── xtquant_service_YYYYMMDD.log   # 主日志
-  └── api_calls_YYYYMMDD.log         # API调用日志
-
-客户端:
-  logs/client_YYYYMMDD.log  # 或通过 XTQUANT_LOG_DIR 环境变量指定
 ```
 
 ---
