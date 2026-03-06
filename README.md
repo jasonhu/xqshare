@@ -1,6 +1,6 @@
-# XtQuant Share (xqshare) 远程代理
+# 极限量化 (xqshare)
 
-完全透明的 xtquant 远程调用方案，让 macOS/Linux 可以像本地一样调用 Windows 上的 xtquant 库。
+完全透明的 XtQuant 远程调用方案，让 macOS/Linux 可以像本地一样调用 Windows 上的 xtquant 库。
 
 ## 特性
 
