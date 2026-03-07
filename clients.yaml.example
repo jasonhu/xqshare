@@ -46,3 +46,5 @@ clients:
 # - tick:   get_full_tick, subscribe_quote, get_market_data*, get_full_kline (period=tick/1m)
 # - trade:  get_xttrader, create_trader
 # - callback: subscribe_*, test_async_callback
+#
+# 注意: 未配置权限的 API，只有 STANDARD 及以上级别可以调用，FREE/PLUS 用户会被拒绝

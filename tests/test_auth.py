@@ -444,10 +444,33 @@ class TestAPIDynamicPermission:
         )
         assert error is None
 
-    def test_unknown_api_allowed(self):
-        """测试未配置的 API 默认允许"""
+    def test_unknown_api_free_denied(self):
+        """测试未配置的 API - FREE 用户被拒绝"""
         error = self.checker.check_api_permission(
             AccountLevel.FREE, "xtdata.some_unknown_api"
+        )
+        assert error is not None
+        assert error.permission == Permission.BASIC
+
+    def test_unknown_api_plus_denied(self):
+        """测试未配置的 API - PLUS 用户被拒绝"""
+        error = self.checker.check_api_permission(
+            AccountLevel.PLUS, "xtdata.some_unknown_api"
+        )
+        assert error is not None
+        assert error.permission == Permission.BASIC
+
+    def test_unknown_api_standard_allowed(self):
+        """测试未配置的 API - STANDARD 用户允许"""
+        error = self.checker.check_api_permission(
+            AccountLevel.STANDARD, "xtdata.some_unknown_api"
+        )
+        assert error is None
+
+    def test_unknown_api_premium_allowed(self):
+        """测试未配置的 API - PREMIUM 用户允许"""
+        error = self.checker.check_api_permission(
+            AccountLevel.PREMIUM, "xtdata.some_unknown_api"
         )
         assert error is None
 

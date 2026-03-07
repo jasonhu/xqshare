@@ -250,7 +250,10 @@ class PermissionChecker:
         required_permission = self._get_required_permission(method, args, kwargs)
 
         if required_permission is None:
-            # 未配置权限的方法，默认允许
+            # 未配置权限的方法
+            # STANDARD 及以上级别允许，FREE/PLUS 级别拒绝
+            if level in (AccountLevel.FREE, AccountLevel.PLUS):
+                return PermissionError(Permission.BASIC, method, level)
             return None
 
         # 检查权限
