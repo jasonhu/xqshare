@@ -143,6 +143,10 @@ class PermissionChecker:
         self.config_path = config_path
         self._clients: Dict[str, ClientConfig] = {}
         self._use_default_client = False  # 标记是否使用默认客户端
+        # 配置文件热更新相关属性
+        self._last_mtime: float = 0  # 文件最后修改时间
+        self._last_check_time: float = 0  # 上次检查时间
+        self._check_interval: int = 300  # 检查间隔 5 分钟
         self._load_config()
 
     def _load_config(self) -> None:
@@ -153,6 +157,9 @@ class PermissionChecker:
             # 配置文件不存在，使用默认客户端
             self._create_default_client()
             return
+
+        # 记录文件修改时间
+        self._last_mtime = config_file.stat().st_mtime
 
         try:
             with open(config_file, "r", encoding="utf-8") as f:
@@ -181,6 +188,45 @@ class PermissionChecker:
         )
         import logging
         logging.info(f"使用默认客户端配置: {DEFAULT_CLIENT_ID} (level=standard)")
+
+    def check_and_reload_if_changed(self) -> bool:
+        """
+        检查配置文件是否变更，如果变更则重新加载
+
+        每 5 分钟检查一次文件修改时间，如果检测到变更则重新加载配置。
+
+        Returns:
+            bool: 是否重新加载了配置
+        """
+        import time
+        current_time = time.time()
+
+        # 检查间隔未到，跳过
+        if current_time - self._last_check_time < self._check_interval:
+            return False
+
+        self._last_check_time = current_time
+
+        config_file = Path(self.config_path)
+        if not config_file.exists():
+            return False
+
+        try:
+            current_mtime = config_file.stat().st_mtime
+            if current_mtime != self._last_mtime:
+                import logging
+                logging.info(f"检测到配置文件变更，重新加载: {self.config_path}")
+                # 重置状态
+                self._clients = {}
+                self._use_default_client = False
+                # 重新加载
+                self._load_config()
+                return True
+        except Exception as e:
+            import logging
+            logging.warning(f"检查配置文件变更失败: {e}")
+
+        return False
 
     def get_client_config(self, client_id: str) -> Optional[ClientConfig]:
         """

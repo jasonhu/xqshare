@@ -267,6 +267,9 @@ class XtQuantService(rpyc.Service):
     def exposed_authenticate(self, client_id, client_secret):
         checker = XtQuantService._permission_checker
 
+        # 检查配置文件是否变更，如果变更则重新加载
+        checker.check_and_reload_if_changed()
+
         # 验证密钥并获取账号等级
         valid, account_level = checker.verify_secret(client_id, client_secret)
 
