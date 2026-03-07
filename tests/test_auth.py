@@ -184,9 +184,11 @@ class TestPermissionChecker:
         assert checker.config_path == "/custom/path/config.yaml"
 
     def test_load_config_file_not_exists(self):
-        """测试配置文件不存在"""
+        """测试配置文件不存在时创建默认客户端"""
         checker = PermissionChecker("/nonexistent/path/config.yaml")
-        assert checker._clients == {}
+        assert checker._use_default_client is True
+        assert "client-standard" in checker._clients
+        assert checker._clients["client-standard"].level == AccountLevel.STANDARD
 
     def test_load_config_from_file(self):
         """测试从文件加载配置"""
@@ -229,22 +231,42 @@ clients:
             assert level is None
 
     def test_verify_secret_from_env(self):
-        """测试从环境变量验证密钥"""
-        with patch.dict(os.environ, {"XTQUANT_CLIENT_app1": "env-secret"}):
-            checker = PermissionChecker("/nonexistent/path/config.yaml")
+        """测试从环境变量验证密钥（配置文件存在时）"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write("""
+clients:
+  configured-user:
+    secret: "configured-secret"
+    level: plus
+""")
+            f.flush()
+            checker = PermissionChecker(f.name)
 
-            valid, level = checker.verify_secret("app1", "env-secret")
-            assert valid is True
-            assert level == AccountLevel.FREE
+            # 环境变量中的客户端不在配置文件中，使用默认密钥
+            with patch.dict(os.environ, {"XTQUANT_CLIENT_SECRET": "env-default-secret"}):
+                valid, level = checker.verify_secret("env-user", "env-default-secret")
+                assert valid is True
+                assert level == AccountLevel.FREE
 
-    def test_verify_secret_default(self):
-        """测试默认密钥验证"""
-        with patch.dict(os.environ, {"XTQUANT_CLIENT_SECRET": "default-secret"}):
-            checker = PermissionChecker("/nonexistent/path/config.yaml")
+    def test_verify_secret_default_client(self):
+        """测试默认客户端验证"""
+        # 配置文件不存在，使用默认客户端
+        checker = PermissionChecker("/nonexistent/path/config.yaml")
 
-            valid, level = checker.verify_secret("unknown", "default-secret")
-            assert valid is True
-            assert level == AccountLevel.FREE
+        # 默认客户端验证成功
+        valid, level = checker.verify_secret("client-standard", "xqshare-default-secret")
+        assert valid is True
+        assert level == AccountLevel.STANDARD
+
+        # 默认客户端密钥错误
+        valid, level = checker.verify_secret("client-standard", "wrong-secret")
+        assert valid is False
+        assert level is None
+
+        # 未知客户端被拒绝（默认客户端模式）
+        valid, level = checker.verify_secret("unknown-client", "any-secret")
+        assert valid is False
+        assert level is None
 
     def test_has_permission(self):
         """测试权限检查"""

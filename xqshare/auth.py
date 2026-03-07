@@ -91,6 +91,10 @@ DAILY_PERIODS = {"1d", "1w", "1mon", "1q", "1hy", "1y"}
 # Tick 周期（包含分笔和1分钟线）
 TICK_PERIODS = {"tick", "1m"}
 
+# 默认客户端配置（当配置文件不存在时使用）
+DEFAULT_CLIENT_ID = "client-standard"
+DEFAULT_CLIENT_SECRET = "xqshare-default-secret"
+
 
 class PermissionError(Exception):
     """权限错误"""
@@ -138,6 +142,7 @@ class PermissionChecker:
             config_path = os.path.join(os.getcwd(), "clients.yaml")
         self.config_path = config_path
         self._clients: Dict[str, ClientConfig] = {}
+        self._use_default_client = False  # 标记是否使用默认客户端
         self._load_config()
 
     def _load_config(self) -> None:
@@ -145,7 +150,8 @@ class PermissionChecker:
         config_file = Path(self.config_path)
 
         if not config_file.exists():
-            # 配置文件不存在，使用环境变量模式
+            # 配置文件不存在，使用默认客户端
+            self._create_default_client()
             return
 
         try:
@@ -156,10 +162,25 @@ class PermissionChecker:
                 for client_id, client_data in data["clients"].items():
                     if isinstance(client_data, dict):
                         self._clients[client_id] = ClientConfig.from_dict(client_data)
+
+            # 如果配置为空，使用默认客户端
+            if not self._clients:
+                self._create_default_client()
         except Exception as e:
-            # 配置加载失败，记录警告但不中断服务
+            # 配置加载失败，使用默认客户端
             import logging
-            logging.warning(f"加载客户端配置失败: {e}")
+            logging.warning(f"加载客户端配置失败: {e}，使用默认客户端")
+            self._create_default_client()
+
+    def _create_default_client(self) -> None:
+        """创建默认客户端配置"""
+        self._use_default_client = True
+        self._clients[DEFAULT_CLIENT_ID] = ClientConfig(
+            secret=DEFAULT_CLIENT_SECRET,
+            level=AccountLevel.STANDARD
+        )
+        import logging
+        logging.info(f"使用默认客户端配置: {DEFAULT_CLIENT_ID} (level=standard)")
 
     def get_client_config(self, client_id: str) -> Optional[ClientConfig]:
         """
@@ -200,7 +221,11 @@ class PermissionChecker:
         config = self.get_client_config(client_id)
 
         if config is None:
-            # 未在配置中找到，尝试使用默认密钥
+            # 未在配置中找到
+            if self._use_default_client:
+                # 使用默认客户端模式，拒绝未知客户端
+                return False, None
+            # 非默认模式，尝试使用环境变量中的默认密钥
             default_secret = os.environ.get("XTQUANT_CLIENT_SECRET", "default-secret")
             if client_secret == default_secret:
                 return True, AccountLevel.FREE

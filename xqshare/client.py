@@ -11,6 +11,10 @@ import logging
 from typing import Any, Callable, Dict, List
 from datetime import datetime
 
+# 默认客户端配置（与服务端保持一致）
+DEFAULT_CLIENT_ID = "client-standard"
+DEFAULT_CLIENT_SECRET = "xqshare-default-secret"
+
 
 # ==================== 日志配置 ====================
 
@@ -252,9 +256,9 @@ class XtQuantRemote:
         if port is None:
             port = int(os.environ.get("XTQUANT_REMOTE_PORT", "18812"))
         if client_id is None:
-            client_id = os.environ.get("XTQUANT_CLIENT_ID", "default")
+            client_id = os.environ.get("XTQUANT_CLIENT_ID", DEFAULT_CLIENT_ID)
         if client_secret is None:
-            client_secret = os.environ.get("XTQUANT_CLIENT_SECRET", "default-secret")
+            client_secret = os.environ.get("XTQUANT_CLIENT_SECRET", DEFAULT_CLIENT_SECRET)
 
         self._host = host
         self._port = port
