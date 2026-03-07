@@ -36,7 +36,12 @@ pip install xqshare
 ### 从源码安装
 
 ```bash
+# Gitee（国内推荐）
 git clone https://gitee.com/jdragonhu/xqshare.git
+
+# GitHub（备用）
+git clone https://github.com/jasonhu/xqshare.git
+
 cd xqshare
 pip install -e .
 ```
