@@ -10,7 +10,16 @@ import ssl
 import logging
 import functools
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+# 导入权限模块
+from .auth import (
+    PermissionChecker,
+    PermissionError,
+    AccountLevel,
+    Permission,
+    get_permission_checker,
+)
 
 # Import xtquant (only available on Windows)
 try:
@@ -143,33 +152,47 @@ class AuthError(Exception):
     pass
 
 
-# ==================== 模块代理（带日志） ====================
+# ==================== 模块代理（带日志和权限检查） ====================
 
 class LoggingProxy:
-    """通用代理：拦截模块/对象的方法调用并记录日志，支持递归包装返回对象"""
+    """通用代理：拦截模块/对象的方法调用并记录日志，支持递归包装返回对象和权限检查"""
 
-    def __init__(self, target, target_name: str, client_info_getter):
+    def __init__(self, target, target_name: str, client_info_getter, permission_checker=None, account_level=None):
         object.__setattr__(self, '_target', target)
         object.__setattr__(self, '_target_name', target_name)
         object.__setattr__(self, '_get_client_info', client_info_getter)
+        object.__setattr__(self, '_permission_checker', permission_checker)
+        object.__setattr__(self, '_account_level', account_level)
 
     def __getattr__(self, name):
         target = object.__getattribute__(self, '_target')
         target_name = object.__getattribute__(self, '_target_name')
         get_client_info = object.__getattribute__(self, '_get_client_info')
+        permission_checker = object.__getattribute__(self, '_permission_checker')
+        account_level = object.__getattribute__(self, '_account_level')
 
         attr = getattr(target, name)
 
-        # 如果是可调用对象，包装成带日志的版本
+        # 如果是可调用对象，包装成带日志和权限检查的版本
         if callable(attr):
             def wrapper(*args, **kwargs):
                 full_name = f"{target_name}.{name}"
+
+                # 权限检查
+                if permission_checker and account_level:
+                    error = permission_checker.check_api_permission(
+                        account_level, full_name, args, kwargs
+                    )
+                    if error:
+                        api_logger.warning(f"[权限拒绝] {full_name} | client={get_client_info()} | {error}")
+                        raise error
+
                 result = _log_call(full_name, get_client_info(), attr, *args, **kwargs)
                 # 如果返回的是复杂对象，递归包装
                 if result is not None and hasattr(result, '__class__'):
                     if not isinstance(result, (int, float, str, bool, list, dict, tuple, type(None), bytes)):
                         if not result.__class__.__module__.startswith('builtins'):
-                            return LoggingProxy(result, full_name, get_client_info)
+                            return LoggingProxy(result, full_name, get_client_info, permission_checker, account_level)
                 return result
             wrapper.__name__ = name
             return wrapper
@@ -197,11 +220,16 @@ class XtQuantService(rpyc.Service):
     _xtdata = xtdata
     _xttrader = xttrader
     _xttype = xttype
+    _permission_checker = None  # 类级别的权限检查器
 
     def on_connect(self, conn):
         self._conn = conn
         self._authenticated = False
         self._client_id = None
+        self._account_level = AccountLevel.FREE  # 默认为免费等级
+        # 初始化权限检查器（延迟初始化）
+        if XtQuantService._permission_checker is None:
+            XtQuantService._permission_checker = get_permission_checker()
         # 兼容不同版本 rpyc：尝试获取客户端地址
         try:
             if hasattr(conn, 'peer'):
@@ -237,11 +265,12 @@ class XtQuantService(rpyc.Service):
 
     @log_api_call("authenticate")
     def exposed_authenticate(self, client_id, client_secret):
-        # 优先使用特定客户端密码，否则使用默认密码
-        expected_secret = os.environ.get(f"XTQUANT_CLIENT_{client_id}") or \
-                          os.environ.get("XTQUANT_CLIENT_SECRET", "default-secret")
+        checker = XtQuantService._permission_checker
 
-        if client_secret != expected_secret:
+        # 验证密钥并获取账号等级
+        valid, account_level = checker.verify_secret(client_id, client_secret)
+
+        if not valid:
             logger.warning(f"[认证失败] client_id={client_id}，断开连接")
             try:
                 self._conn.close()
@@ -251,9 +280,10 @@ class XtQuantService(rpyc.Service):
 
         self._authenticated = True
         self._client_id = client_id
+        self._account_level = account_level
         self._client_info = f"{client_id}@{self._client_info}"
-        logger.info(f"[认证成功] client_id={client_id}")
-        return True
+        logger.info(f"[认证成功] client_id={client_id} | level={account_level.value}")
+        return {"success": True, "level": account_level.value}
 
     @log_api_call("heartbeat")
     def exposed_heartbeat(self):
@@ -264,21 +294,52 @@ class XtQuantService(rpyc.Service):
     @log_api_call("get_xtdata")
     def exposed_get_xtdata(self):
         self._require_auth()
-        return LoggingModuleProxy(self._xtdata, 'xtdata', lambda: self._client_info)
+        return LoggingModuleProxy(
+            self._xtdata, 'xtdata',
+            lambda: self._client_info,
+            XtQuantService._permission_checker,
+            self._account_level
+        )
 
     @log_api_call("get_xttrader")
     def exposed_get_xttrader(self):
         self._require_auth()
-        return LoggingModuleProxy(self._xttrader, 'xttrader', lambda: self._client_info)
+        # 检查 trade 权限
+        if self._account_level:
+            error = XtQuantService._permission_checker.check_api_permission(
+                self._account_level, "get_xttrader"
+            )
+            if error:
+                logger.warning(f"[权限拒绝] get_xttrader | client={self._client_info} | {error}")
+                raise error
+        return LoggingModuleProxy(
+            self._xttrader, 'xttrader',
+            lambda: self._client_info,
+            XtQuantService._permission_checker,
+            self._account_level
+        )
 
     @log_api_call("get_xttype")
     def exposed_get_xttype(self):
         self._require_auth()
-        return LoggingModuleProxy(self._xttype, 'xttype', lambda: self._client_info)
+        return LoggingModuleProxy(
+            self._xttype, 'xttype',
+            lambda: self._client_info,
+            XtQuantService._permission_checker,
+            self._account_level
+        )
 
     @log_api_call("create_trader")
     def exposed_create_trader(self):
         self._require_auth()
+        # 检查 trade 权限
+        if self._account_level:
+            error = XtQuantService._permission_checker.check_api_permission(
+                self._account_level, "create_trader"
+            )
+            if error:
+                logger.warning(f"[权限拒绝] create_trader | client={self._client_info} | {error}")
+                raise error
         if not XTQUANT_AVAILABLE:
             raise RuntimeError("xtquant 库未安装")
         return XtQuantTrader()
@@ -352,6 +413,16 @@ class XtQuantService(rpyc.Service):
         :param count: 回调次数
         :return: 立即返回 "已启动"
         """
+        self._require_auth()
+        # 检查 callback 权限
+        if self._account_level:
+            error = XtQuantService._permission_checker.check_api_permission(
+                self._account_level, "test_async_callback"
+            )
+            if error:
+                logger.warning(f"[权限拒绝] test_async_callback | client={self._client_info} | {error}")
+                raise error
+
         import threading
         import time
 

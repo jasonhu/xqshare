@@ -1,0 +1,48 @@
+# xqshare 服务端客户端配置示例
+# 复制此文件到 ./clients.yaml（服务端运行目录）并修改
+
+clients:
+  # 免费用户 - 基础信息 + 日线数据
+  app-free:
+    secret: "your-secret-key-for-free"
+    level: free
+
+  # 进阶用户 - 基础信息 + 日线数据 + 分钟线数据
+  app-plus:
+    secret: "your-secret-key-for-plus"
+    level: plus
+
+  # 标准用户 - 基础信息 + 日线数据 + 分钟线数据 + 实时行情 + 回调功能
+  app-standard:
+    secret: "your-secret-key-for-standard"
+    level: standard
+
+  # 高级用户 - 全部权限
+  app-premium:
+    secret: "your-secret-key-for-premium"
+    level: premium
+
+  # 企业用户 - 全部权限 + 优先支持
+  app-enterprise:
+    secret: "your-secret-key-for-enterprise"
+    level: enterprise
+
+# 权限等级说明:
+# ┌───────────┬─────────────────────────────────────────────────────────────┐
+# │ 等级      │ 权限范围                                                    │
+# ├───────────┼─────────────────────────────────────────────────────────────┤
+# │ free      │ basic + daily (基础信息、日线数据)                          │
+# │ plus      │ basic + daily + minute (增加分钟线数据)                    │
+# │ standard  │ basic + daily + minute + tick + callback (增加实时行情、回调) │
+# │ premium   │ 全部权限 (增加交易功能)                                    │
+# │ enterprise│ 全部权限 + 优先支持                                        │
+# └───────────┴─────────────────────────────────────────────────────────────┘
+
+# 权限对应的 API:
+# - basic:  get_stock_list_in_sector, get_index_list, get_instrument_detail, get_divid_factors, get_sector_list
+# - daily:  get_market_data, get_market_data_ex, get_full_kline, download_history_data* (period=1d/1w/1mon/1q/1hy/1y)
+# - minute: get_market_data, get_market_data_ex, get_full_kline, download_history_data* (period=5m/15m/30m/1h)
+#           get_financial_data, download_financial_data, download_financial_data2
+# - tick:   get_full_tick, subscribe_quote, get_market_data*, get_full_kline (period=tick/1m)
+# - trade:  get_xttrader, create_trader
+# - callback: subscribe_*, test_async_callback

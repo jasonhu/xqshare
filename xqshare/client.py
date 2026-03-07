@@ -274,6 +274,7 @@ class XtQuantRemote:
         self._heartbeat_thread = None
         self._stop_heartbeat = threading.Event()
         self._bg_thread = None  # BgServingThread for async callbacks
+        self._account_level = None  # 账号等级
 
         self._xtdata = RemoteModule(self, 'xtdata')
         self._xttrader = RemoteModule(self, 'xttrader')
@@ -336,8 +337,13 @@ class XtQuantRemote:
             self._logger.debug("后台服务线程已启动")
 
             if self._client_secret:
-                self._conn.root.authenticate(self._client_id, self._client_secret)
-                self._logger.info(f"认证成功: client_id={self._client_id}")
+                result = self._conn.root.authenticate(self._client_id, self._client_secret)
+                # 处理认证响应（支持新格式）
+                if isinstance(result, dict):
+                    self._account_level = result.get("level", "free")
+                    self._logger.info(f"认证成功: client_id={self._client_id} | level={self._account_level}")
+                else:
+                    self._logger.info(f"认证成功: client_id={self._client_id}")
 
             if self._heartbeat_interval > 0:
                 self._start_heartbeat()
