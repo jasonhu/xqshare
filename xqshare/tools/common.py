@@ -35,7 +35,7 @@ def create_client(host=None, port=None, secret=None, client_id=None, quiet=True)
     h = host or os.environ.get(ENV_HOST, "localhost")
     p = port or int(os.environ.get(ENV_PORT, "18812"))
     s = secret or os.environ.get(ENV_SECRET)
-    cid = client_id or os.environ.get(ENV_CLIENT_ID, "default")
+    cid = client_id or os.environ.get(ENV_CLIENT_ID, "client-standard")
 
     xt = XtQuantRemote(host=h, port=p, client_id=cid, client_secret=s)
     try:
