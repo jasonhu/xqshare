@@ -184,13 +184,41 @@ def _serialize_for_transfer(result):
     except ImportError:
         pass
 
-    # 列表/字典: JSON 序列化
-    if isinstance(result, (list, dict)):
+    # 字典: 检查是否包含 DataFrame，需要特殊处理
+    if isinstance(result, dict):
+        try:
+            import pandas as pd
+            # 检查是否有 DataFrame 值
+            has_dataframe = any(isinstance(v, pd.DataFrame) for v in result.values())
+            if has_dataframe:
+                # 将字典中的 DataFrame 转为 CSV 字符串
+                serialized_dict = {}
+                for k, v in result.items():
+                    if isinstance(v, pd.DataFrame):
+                        serialized_dict[k] = {
+                            "__df__": True,
+                            "csv": v.to_csv(index=True)
+                        }
+                    else:
+                        serialized_dict[k] = v
+                json_str = json.dumps(serialized_dict, ensure_ascii=False, default=str)
+                return {SERIALIZED_MARKER: "dict_with_dataframe", "data": json_str}
+        except ImportError:
+            pass
+
+        # 普通字典: JSON 序列化
         try:
             json_str = json.dumps(result, ensure_ascii=False, default=str)
             return {SERIALIZED_MARKER: "json", "data": json_str}
         except (TypeError, ValueError):
-            # 无法 JSON 序列化的对象，走原始流程
+            pass
+
+    # 列表: JSON 序列化
+    if isinstance(result, (list, tuple)):
+        try:
+            json_str = json.dumps(result, ensure_ascii=False, default=str)
+            return {SERIALIZED_MARKER: "json", "data": json_str}
+        except (TypeError, ValueError):
             pass
 
     # 其他类型原样返回

@@ -109,6 +109,22 @@ def _deserialize_from_transfer(result):
             # 无 pandas 时返回原始 CSV 字符串
             return data
 
+    if serialized_type == "dict_with_dataframe":
+        import io
+        try:
+            import pandas as pd
+            deserialized_dict = json.loads(data)
+            result_dict = {}
+            for k, v in deserialized_dict.items():
+                if isinstance(v, dict) and v.get("__df__"):
+                    result_dict[k] = pd.read_csv(io.StringIO(v["csv"]), index_col=0)
+                else:
+                    result_dict[k] = v
+            return result_dict
+        except ImportError:
+            # 无 pandas 时返回原始 JSON
+            return json.loads(data)
+
     # 未知类型，返回原始数据
     return result
 
