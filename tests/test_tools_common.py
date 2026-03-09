@@ -10,45 +10,46 @@ from io import StringIO
 from unittest.mock import patch
 
 from xqshare.tools.common import (
-    _to_json_serializable,
-    _format_text_output,
+    _format_as_json,
+    _format_as_text,
+    _format_as_csv,
     format_output,
-    _format_object,
+    _format_object_attrs,
 )
 
 
-class TestToJsonSerializable:
-    """测试 _to_json_serializable 函数"""
+class TestFormatAsJson:
+    """测试 _format_as_json 函数"""
 
     def test_none(self):
         """None 应返回 None"""
-        assert _to_json_serializable(None) is None
+        assert _format_as_json(None) is None
 
     def test_primitive_types(self):
         """基本类型应原样返回"""
-        assert _to_json_serializable("hello") == "hello"
-        assert _to_json_serializable(123) == 123
-        assert _to_json_serializable(3.14) == 3.14
-        assert _to_json_serializable(True) is True
-        assert _to_json_serializable(False) is False
+        assert _format_as_json("hello") == "hello"
+        assert _format_as_json(123) == 123
+        assert _format_as_json(3.14) == 3.14
+        assert _format_as_json(True) is True
+        assert _format_as_json(False) is False
 
     def test_list_and_tuple(self):
         """列表和元组应转换为数组，递归处理元素"""
-        result = _to_json_serializable([1, "a", None])
+        result = _format_as_json([1, "a", None])
         assert result == [1, "a", None]
 
-        result = _to_json_serializable((1, 2, 3))
+        result = _format_as_json((1, 2, 3))
         assert result == [1, 2, 3]  # 元组转为列表
 
     def test_dict(self):
         """字典应递归处理值"""
-        result = _to_json_serializable({"a": 1, "b": [2, 3]})
+        result = _format_as_json({"a": 1, "b": [2, 3]})
         assert result == {"a": 1, "b": [2, 3]}
 
     def test_dataframe(self):
         """DataFrame 应转换为 records 格式"""
         df = pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})
-        result = _to_json_serializable(df)
+        result = _format_as_json(df)
         assert result == [
             {"col1": 1, "col2": "a"},
             {"col1": 2, "col2": "b"},
@@ -57,7 +58,7 @@ class TestToJsonSerializable:
     def test_datetime(self):
         """datetime 应转换为 ISO 格式字符串"""
         dt = datetime(2024, 1, 15, 10, 30, 0)
-        result = _to_json_serializable(dt)
+        result = _format_as_json(dt)
         assert result == "2024-01-15T10:30:00"
 
     def test_object(self):
@@ -68,7 +69,7 @@ class TestToJsonSerializable:
                 self.value = 42
 
         obj = TestObj()
-        result = _to_json_serializable(obj)
+        result = _format_as_json(obj)
         assert "name" in result
         assert result["name"] == "test"
         assert "value" in result
@@ -82,24 +83,24 @@ class TestToJsonSerializable:
             "df": df,
             "nested": {"a": datetime(2024, 1, 1)},
         }
-        result = _to_json_serializable(data)
+        result = _format_as_json(data)
         assert result["items"] == [1, 2, 3]
         assert result["df"] == [{"x": 1}]
         assert result["nested"]["a"] == "2024-01-01T00:00:00"
 
 
-class TestFormatTextOutput:
-    """测试 _format_text_output 函数"""
+class TestFormatAsText:
+    """测试 _format_as_text 函数"""
 
     def test_none(self):
         """None 应输出 'None'"""
-        result = _format_text_output(None)
+        result = _format_as_text(None)
         assert result == "None"
 
     def test_dataframe(self):
         """DataFrame 应格式化为表格字符串"""
         df = pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})
-        result = _format_text_output(df)
+        result = _format_as_text(df)
         assert "col1" in result
         assert "col2" in result
         assert "1" in result
@@ -109,20 +110,20 @@ class TestFormatTextOutput:
         """带 DataFrame 的字典应分块格式化"""
         df = pd.DataFrame({"x": [1, 2]})
         data = {"table": df, "count": 2}
-        result = _format_text_output(data)
+        result = _format_as_text(data)
         assert "=== table ===" in result
         assert "=== count ===" in result
 
     def test_plain_dict(self):
         """普通字典应使用 pformat 格式化"""
         data = {"a": 1, "b": [2, 3]}
-        result = _format_text_output(data)
+        result = _format_as_text(data)
         assert "'a': 1" in result or "'a':1" in result
 
     def test_list_no_limit(self):
         """列表无限制时应输出全部元素"""
         items = ["a", "b", "c"]
-        result = _format_text_output(items, limit=None)
+        result = _format_as_text(items, limit=None)
         assert "[1] a" in result
         assert "[2] b" in result
         assert "[3] c" in result
@@ -130,7 +131,7 @@ class TestFormatTextOutput:
     def test_list_with_limit(self):
         """列表限制时应截断并显示统计"""
         items = ["a", "b", "c", "d", "e"]
-        result = _format_text_output(items, limit=3)
+        result = _format_as_text(items, limit=3)
         assert "[1] a" in result
         assert "[2] b" in result
         assert "[3] c" in result
@@ -145,7 +146,7 @@ class TestFormatTextOutput:
                 self.name = name
 
         items = [Item("first"), Item("second")]
-        result = _format_text_output(items)
+        result = _format_as_text(items)
         assert "[1]" in result
         assert "[2]" in result
         # 对象属性应被格式化
@@ -153,11 +154,51 @@ class TestFormatTextOutput:
 
     def test_primitive(self):
         """基本类型应使用 pformat 格式化"""
-        result = _format_text_output(42)
+        result = _format_as_text(42)
         assert "42" in result
 
-        result = _format_text_output("hello")
+        result = _format_as_text("hello")
         assert "hello" in result
+
+
+class TestFormatAsCsv:
+    """测试 _format_as_csv 函数"""
+
+    def test_dataframe(self):
+        """DataFrame 应格式化为 CSV 字符串"""
+        df = pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})
+        result = _format_as_csv(df)
+        assert "col1" in result
+        assert "col2" in result
+        assert "1,a" in result or "1" in result
+        assert "2,b" in result or "2" in result
+
+    def test_dict_with_dataframe(self):
+        """带 DataFrame 的字典应分块格式化"""
+        df = pd.DataFrame({"x": [1, 2]})
+        data = {"table": df, "count": 2}
+        result = _format_as_csv(data)
+        assert "# table" in result
+        assert "# count: 2" in result
+
+    def test_dict_without_dataframe(self):
+        """不含 DataFrame 的字典应使用 pformat 格式化"""
+        data = {"a": 1, "b": [2, 3]}
+        result = _format_as_csv(data)
+        assert "a" in result or "1" in result
+
+    def test_primitive(self):
+        """基本类型应使用 pformat 格式化"""
+        result = _format_as_csv(42)
+        assert "42" in result
+
+        result = _format_as_csv("hello")
+        assert "hello" in result
+
+    def test_none(self):
+        """None 应输出 'None'"""
+        result = _format_as_csv(None)
+        assert "None" in result
 
 
 class TestFormatOutput:
@@ -199,7 +240,7 @@ class TestFormatOutput:
         assert "# count: 1" in captured.out
 
     def test_text_format(self, capsys, tmp_path):
-        """文本格式（默认）应使用 _format_text_output"""
+        """文本格式（默认）应使用 _format_as_text"""
         data = {"a": 1, "b": 2}
         format_output(data, output_format="text")
         captured = capsys.readouterr()
@@ -236,8 +277,8 @@ class TestFormatOutput:
         assert "已显示前 5 条" in captured.out
 
 
-class TestFormatObject:
-    """测试 _format_object 函数"""
+class TestFormatObjectAttrs:
+    """测试 _format_object_attrs 函数"""
 
     def test_object_with_attributes(self):
         """对象属性应被提取为字典"""
@@ -247,7 +288,7 @@ class TestFormatObject:
                 self.value = 42
 
         obj = TestObj()
-        result = _format_object(obj)
+        result = _format_object_attrs(obj)
         assert isinstance(result, dict)
         assert result["name"] == "test"
         assert result["value"] == 42
@@ -262,7 +303,7 @@ class TestFormatObject:
                 return "ignored"
 
         obj = TestObj()
-        result = _format_object(obj)
+        result = _format_object_attrs(obj)
         assert "value" in result
         assert "do_something" not in result
 
@@ -274,7 +315,7 @@ class TestFormatObject:
                 self._private = "hidden"
 
         obj = TestObj()
-        result = _format_object(obj)
+        result = _format_object_attrs(obj)
         assert "public" in result
         assert "_private" not in result
 
@@ -284,7 +325,7 @@ class TestFormatObject:
             pass
 
         obj = EmptyObj()
-        result = _format_object(obj)
+        result = _format_object_attrs(obj)
         # 无公共非 callable 属性，返回 str(obj)
         assert isinstance(result, str)
 
@@ -300,7 +341,7 @@ class TestFormatObject:
 
         obj = ProblematicObj()
         # 不应抛出异常
-        result = _format_object(obj)
+        result = _format_object_attrs(obj)
         assert "normal" in result
         assert "problematic" not in result
 

@@ -96,7 +96,7 @@ def preprocess_params(params):
     return params
 
 
-def _to_json_serializable(result):
+def _format_as_json(result):
     """将结果转换为 JSON 可序列化格式"""
     import pandas as pd
     from datetime import datetime
@@ -106,11 +106,11 @@ def _to_json_serializable(result):
     elif isinstance(result, pd.DataFrame):
         return result.to_dict(orient='records')
     elif isinstance(result, dict):
-        return {k: _to_json_serializable(v) for k, v in result.items()}
+        return {k: _format_as_json(v) for k, v in result.items()}
     elif isinstance(result, (list, tuple)):
-        return [_to_json_serializable(item) for item in result]
+        return [_format_as_json(item) for item in result]
     elif hasattr(result, '__dict__'):
-        return {attr: _to_json_serializable(getattr(result, attr))
+        return {attr: _format_as_json(getattr(result, attr))
                 for attr in dir(result)
                 if not attr.startswith('_') and not callable(getattr(result, attr))}
     elif isinstance(result, datetime):
@@ -119,8 +119,8 @@ def _to_json_serializable(result):
         return result
 
 
-def _format_text_output(result, limit=None):
-    """将结果格式化为文本输出"""
+def _format_as_text(result, limit=None):
+    """将结果格式化为文本字符串"""
     import pandas as pd
     from pprint import pformat
     import io
@@ -149,7 +149,7 @@ def _format_text_output(result, limit=None):
         display = result[:limit] if limit and total > limit else result
         for i, item in enumerate(display, 1):
             if hasattr(item, '__dict__') or hasattr(item, '__slots__'):
-                output.write(f"[{i}] {_format_object(item)}\n")
+                output.write(f"[{i}] {_format_object_attrs(item)}\n")
             else:
                 output.write(f"[{i}] {item}\n")
         if limit and total > limit:
@@ -158,6 +158,33 @@ def _format_text_output(result, limit=None):
         output.write(pformat(result))
 
     return output.getvalue()
+
+
+def _format_as_csv(result):
+    """将结果格式化为 CSV 字符串
+
+    Args:
+        result: API 返回结果
+
+    Returns:
+        CSV 格式的字符串
+    """
+    import pandas as pd
+    from pprint import pformat
+
+    if isinstance(result, pd.DataFrame):
+        return result.to_csv(index=True)
+    elif isinstance(result, dict) and any(isinstance(v, pd.DataFrame) for v in result.values()):
+        lines = []
+        for key, value in result.items():
+            if isinstance(value, pd.DataFrame):
+                lines.append(f"# {key}")
+                lines.append(value.to_csv(index=True))
+            else:
+                lines.append(f"# {key}: {value}")
+        return "\n".join(lines) + "\n"
+    else:
+        return pformat(result) + "\n"
 
 
 def format_output(result, limit=None, output=None, output_format='text'):
@@ -169,32 +196,17 @@ def format_output(result, limit=None, output=None, output_format='text'):
         output: 输出文件路径，None 表示输出到控制台
         output_format: 输出格式（text/json/csv），默认 text
     """
-    import pandas as pd
-    from pprint import pformat
     from pathlib import Path
 
     if output_format == 'json':
-        data = _to_json_serializable(result)
+        data = _format_as_json(result)
         content = json.dumps(data, ensure_ascii=False, indent=2)
 
     elif output_format == 'csv':
-        if isinstance(result, pd.DataFrame):
-            content = result.to_csv(index=True)
-        elif isinstance(result, dict) and any(isinstance(v, pd.DataFrame) for v in result.values()):
-            lines = []
-            for key, value in result.items():
-                if isinstance(value, pd.DataFrame):
-                    lines.append(f"# {key}")
-                    lines.append(value.to_csv(index=True))
-                else:
-                    lines.append(f"# {key}: {value}")
-            content = "\n".join(lines)
-        else:
-            content = pformat(result)
-        content += "\n"
+        content = _format_as_csv(result)
 
     else:
-        content = _format_text_output(result, limit)
+        content = _format_as_text(result, limit)
 
     if output:
         Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -205,8 +217,8 @@ def format_output(result, limit=None, output=None, output_format='text'):
         print(content)
 
 
-def _format_object(obj):
-    """将对象转换为字典格式"""
+def _format_object_attrs(obj):
+    """将对象属性提取为字典格式"""
     result = {}
     # 使用 dir() 遍历所有属性
     for attr in dir(obj):
