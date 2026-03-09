@@ -45,7 +45,18 @@ def create_client(host=None, port=None, secret=None, client_id=None, quiet=True)
 
 
 def parse_kv_args(args_list):
-    """解析 --key value 格式的参数"""
+    """解析 --key value 格式的参数
+
+    自动过滤已知的全局 CLI 参数，防止它们被误传给 API 函数。
+    """
+    # 已知的全局参数（不应传递给 API）
+    GLOBAL_ARGS = {
+        'host', 'port', 'secret', 'client_id',
+        'limit', 'n', 'verbose', 'v',
+        'output', 'o', 'format', 'f', 'compact',
+        'userdata_path', 'account_id', 'account_type',
+    }
+
     params = {}
     i = 0
     while i < len(args_list):
@@ -54,11 +65,22 @@ def parse_kv_args(args_list):
             key = arg[2:]
             # 将连字符转换为下划线，匹配 Python 函数参数命名
             key = key.replace('-', '_')
+
+            # 跳过全局参数
+            if key in GLOBAL_ARGS:
+                # 如果有值且不是下一个选项，也跳过值
+                if i + 1 < len(args_list) and not args_list[i + 1].startswith('--'):
+                    i += 2
+                else:
+                    i += 1
+                continue
+
             if i + 1 < len(args_list) and not args_list[i + 1].startswith('--'):
                 params[key] = args_list[i + 1]
                 i += 2
             else:
                 params[key] = True
+                i += 1
         else:
             i += 1
     return params
