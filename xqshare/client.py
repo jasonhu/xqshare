@@ -8,6 +8,7 @@ import time
 import threading
 import ssl
 import logging
+import json
 from typing import Any, Callable, Dict, List
 from datetime import datetime
 
@@ -70,6 +71,46 @@ def get_logger():
     if _logger is None:
         _logger = setup_logging(quiet=_quiet_mode)
     return _logger
+
+
+# ==================== 反序列化传输数据 ====================
+
+SERIALIZED_MARKER = "__xqshare_serialized__"
+
+
+def _deserialize_from_transfer(result):
+    """反序列化服务端优化传输的数据
+
+    Args:
+        result: 服务端返回的数据
+
+    Returns:
+        反序列化后的 Python 对象
+    """
+    # 检查是否为序列化数据
+    if not isinstance(result, dict) or SERIALIZED_MARKER not in result:
+        return result
+
+    serialized_type = result[SERIALIZED_MARKER]
+    data = result["data"]
+
+    if serialized_type == "none":
+        return None
+
+    if serialized_type == "json":
+        return json.loads(data)
+
+    if serialized_type == "dataframe_csv":
+        import io
+        try:
+            import pandas as pd
+            return pd.read_csv(io.StringIO(data), index_col=0)
+        except ImportError:
+            # 无 pandas 时返回原始 CSV 字符串
+            return data
+
+    # 未知类型，返回原始数据
+    return result
 
 
 # ==================== 异常定义 ====================
@@ -157,6 +198,8 @@ class RemoteModule:
 
             try:
                 result = func(*args, **kwargs)
+                # 反序列化服务端优化传输的数据
+                result = _deserialize_from_transfer(result)
                 elapsed_ms = (time.perf_counter() - start_time) * 1000
                 result_summary = self._summarize_result(result)
                 self._logger.info(f"[OK] {self._module_name}.{func_name} | {elapsed_ms:.2f}ms | {result_summary}")

@@ -96,15 +96,36 @@ def preprocess_params(params):
     return params
 
 
+def _is_remote_object(obj):
+    """判断是否为 RPyC 远程对象（netref）
+
+    Args:
+        obj: 待检测对象
+
+    Returns:
+        bool: 如果是远程对象返回 True
+    """
+    module = type(obj).__module__
+    return 'rpyc' in module or 'netref' in module
+
+
 def _format_as_json(result):
     """将结果转换为 JSON 可序列化格式"""
     import pandas as pd
     from datetime import datetime
+    import io
 
     if result is None:
         return None
     elif isinstance(result, pd.DataFrame):
-        return result.to_dict(orient='records')
+        if _is_remote_object(result):
+            # 远程 DataFrame：用 to_csv 一次拉取，本地解析
+            csv_str = result.to_csv(index=True)
+            local_df = pd.read_csv(io.StringIO(csv_str), index_col=0)
+            return local_df.to_dict(orient='records')
+        else:
+            # 本地 DataFrame：直接转换
+            return result.to_dict(orient='records')
     elif isinstance(result, dict):
         return {k: _format_as_json(v) for k, v in result.items()}
     elif isinstance(result, (list, tuple)):

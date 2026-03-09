@@ -15,7 +15,51 @@ from xqshare.tools.common import (
     _format_as_csv,
     format_output,
     _format_object_attrs,
+    _is_remote_object,
 )
+
+
+class TestIsRemoteObject:
+    """测试 _is_remote_object 函数"""
+
+    def test_local_dataframe(self):
+        """本地 DataFrame 应返回 False"""
+        df = pd.DataFrame({"col1": [1, 2]})
+        assert _is_remote_object(df) is False
+
+    def test_local_object(self):
+        """普通 Python 对象应返回 False"""
+        class TestObj:
+            pass
+        obj = TestObj()
+        assert _is_remote_object(obj) is False
+
+    def test_primitive_types(self):
+        """基本类型应返回 False"""
+        assert _is_remote_object("string") is False
+        assert _is_remote_object(123) is False
+        assert _is_remote_object([1, 2, 3]) is False
+        assert _is_remote_object({"key": "value"}) is False
+
+    def test_mock_rpyc_object(self):
+        """模拟 RPyC 远程对象应返回 True"""
+        # 创建一个模拟的远程对象
+        class MockNetref:
+            pass
+
+        # 模拟 RPyC netref 的模块名
+        MockNetref.__module__ = 'rpyc.core.netref'
+        mock_obj = MockNetref()
+        assert _is_remote_object(mock_obj) is True
+
+    def test_mock_netref_object(self):
+        """模块名仅包含 netref 的对象应返回 True"""
+        class MockNetref:
+            pass
+
+        MockNetref.__module__ = 'some.netref.module'
+        mock_obj = MockNetref()
+        assert _is_remote_object(mock_obj) is True
 
 
 class TestFormatAsJson:

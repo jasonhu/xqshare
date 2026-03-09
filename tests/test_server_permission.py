@@ -28,6 +28,9 @@ sys.modules['xtquant.xttype'] = mock_xttype
 from xqshare.server import _init_logging
 _init_logging("WARNING")
 
+# 导入反序列化函数（服务端返回的是序列化数据，测试时需要反序列化）
+from xqshare.client import _deserialize_from_transfer
+
 from xqshare.server import (
     XtQuantService,
     LoggingProxy,
@@ -129,7 +132,7 @@ class TestLoggingProxyPermission:
         proxy = self._create_proxy(mock_xtdata, AccountLevel.FREE)
         result = proxy.get_stock_list_in_sector("沪深A股")
 
-        assert result == ["000001.SZ"]
+        assert _deserialize_from_transfer(result) == ["000001.SZ"]
         mock_xtdata.get_stock_list_in_sector.assert_called_once_with("沪深A股")
 
     def test_free_user_daily_api(self):
@@ -140,7 +143,7 @@ class TestLoggingProxyPermission:
         proxy = self._create_proxy(mock_xtdata, AccountLevel.FREE)
         result = proxy.get_market_data(["000001.SZ"], "1d")
 
-        assert result == {"000001.SZ": {}}
+        assert _deserialize_from_transfer(result) == {"000001.SZ": {}}
 
     def test_free_user_minute_api_denied(self):
         """测试 FREE 用户调用 minute API 被拒绝"""
@@ -162,7 +165,7 @@ class TestLoggingProxyPermission:
         proxy = self._create_proxy(mock_xtdata, AccountLevel.PLUS)
         result = proxy.get_market_data(["000001.SZ"], "5m")
 
-        assert result == {"000001.SZ": {}}
+        assert _deserialize_from_transfer(result) == {"000001.SZ": {}}
 
     def test_plus_user_tick_api_denied(self):
         """测试 PLUS 用户调用 tick API 被拒绝"""
@@ -194,7 +197,7 @@ class TestLoggingProxyPermission:
         proxy = self._create_proxy(mock_xtdata, AccountLevel.STANDARD)
         result = proxy.get_market_data(["000001.SZ"], "tick")
 
-        assert result == {"000001.SZ": {}}
+        assert _deserialize_from_transfer(result) == {"000001.SZ": {}}
 
     def test_standard_user_1m_api(self):
         """测试 STANDARD 用户可调用 1m API"""
@@ -204,7 +207,7 @@ class TestLoggingProxyPermission:
         proxy = self._create_proxy(mock_xtdata, AccountLevel.STANDARD)
         result = proxy.get_market_data(["000001.SZ"], "1m")
 
-        assert result == {"000001.SZ": {}}
+        assert _deserialize_from_transfer(result) == {"000001.SZ": {}}
 
     def test_standard_user_get_full_tick(self):
         """测试 STANDARD 用户可调用 get_full_tick"""
@@ -214,7 +217,7 @@ class TestLoggingProxyPermission:
         proxy = self._create_proxy(mock_xtdata, AccountLevel.STANDARD)
         result = proxy.get_full_tick(["000001.SZ"])
 
-        assert result == {"000001.SZ": {"lastPrice": 10.5}}
+        assert _deserialize_from_transfer(result) == {"000001.SZ": {"lastPrice": 10.5}}
 
     def test_financial_data_permission(self):
         """测试财务数据权限 (minute 级别)"""
@@ -230,7 +233,7 @@ class TestLoggingProxyPermission:
         # PLUS 用户可以调用
         proxy = self._create_proxy(mock_xtdata, AccountLevel.PLUS)
         result = proxy.get_financial_data("000001.SZ")
-        assert result == {}
+        assert _deserialize_from_transfer(result) == {}
 
     def test_callback_permission(self):
         """测试回调权限"""
@@ -246,7 +249,7 @@ class TestLoggingProxyPermission:
         # STANDARD 用户可以调用
         proxy = self._create_proxy(mock_xtdata, AccountLevel.STANDARD)
         result = proxy.subscribe_whole_quote("000001.SZ", lambda x: None)
-        assert result is None
+        assert _deserialize_from_transfer(result) is None
 
     def test_get_full_kline_permission(self):
         """测试 get_full_kline 权限检测"""

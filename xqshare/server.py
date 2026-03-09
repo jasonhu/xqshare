@@ -9,6 +9,7 @@ import os
 import ssl
 import logging
 import functools
+import json
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -152,6 +153,50 @@ class AuthError(Exception):
     pass
 
 
+# ==================== 序列化传输优化 ====================
+
+# 需要序列化传输的类型标记
+SERIALIZED_MARKER = "__xqshare_serialized__"
+
+
+def _serialize_for_transfer(result):
+    """将结果序列化以优化 RPyC 传输性能
+
+    对于大型列表/字典/DataFrame，序列化后传输比逐元素传输快很多。
+
+    Args:
+        result: API 调用返回值
+
+    Returns:
+        序列化后的数据结构，包含类型标记和序列化数据
+    """
+    import io
+
+    if result is None:
+        return {SERIALIZED_MARKER: "none", "data": None}
+
+    # DataFrame: 转为 CSV 字符串
+    try:
+        import pandas as pd
+        if isinstance(result, pd.DataFrame):
+            csv_str = result.to_csv(index=True)
+            return {SERIALIZED_MARKER: "dataframe_csv", "data": csv_str}
+    except ImportError:
+        pass
+
+    # 列表/字典: JSON 序列化
+    if isinstance(result, (list, dict)):
+        try:
+            json_str = json.dumps(result, ensure_ascii=False, default=str)
+            return {SERIALIZED_MARKER: "json", "data": json_str}
+        except (TypeError, ValueError):
+            # 无法 JSON 序列化的对象，走原始流程
+            pass
+
+    # 其他类型原样返回
+    return result
+
+
 # ==================== 模块代理（带日志和权限检查） ====================
 
 class LoggingProxy:
@@ -188,12 +233,15 @@ class LoggingProxy:
                         raise error
 
                 result = _log_call(full_name, get_client_info(), attr, *args, **kwargs)
-                # 如果返回的是复杂对象，递归包装
+
+                # 如果返回的是复杂对象（非基本类型），递归包装
                 if result is not None and hasattr(result, '__class__'):
                     if not isinstance(result, (int, float, str, bool, list, dict, tuple, type(None), bytes)):
                         if not result.__class__.__module__.startswith('builtins'):
                             return LoggingProxy(result, full_name, get_client_info, permission_checker, account_level)
-                return result
+
+                # 序列化传输优化：将列表/字典/DataFrame 序列化以减少远程调用
+                return _serialize_for_transfer(result)
             wrapper.__name__ = name
             return wrapper
 
