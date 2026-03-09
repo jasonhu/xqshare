@@ -26,6 +26,8 @@ ONLY=""
 EXCLUDE=""
 STOCK="000001.SZ"
 STOCK2="600000.SH"
+STOCK3="000002.SZ"
+STOCK4="600519.SH"
 FULL_OUTPUT=false
 
 # ==================== 解析参数 ====================
@@ -184,12 +186,16 @@ if should_run "daily"; then
     echo ""
     echo "--- DAILY 级别 (日线) ---"
 
-    echo "[7] get_market_data([$STOCK], 1d, 20260101-20260309)"
-    $CMD get_market_data --stock-list "[\"$STOCK\"]" --period "1d" --start-time "20260101" --end-time "20260309" | truncate_output
+    echo "[7] get_market_data([$STOCK,$STOCK2,$STOCK3,$STOCK4], 1d, 20260101-20260309)"
+    $CMD get_market_data --stock-list "[\"$STOCK\",\"$STOCK2\",\"$STOCK3\",\"$STOCK4\"]" --period "1d" --start-time "20260101" --end-time "20260309" | truncate_output
     echo ""
 
     echo "[8] get_market_data_ex([$STOCK], 1d, 20260101-20260309)"
     $CMD get_market_data_ex --stock-list "[\"$STOCK\"]" --period "1d" --start-time "20260101" --end-time "20260309" | truncate_output
+    echo ""
+
+    echo "[8.1] get_market_data_ex([$STOCK,$STOCK2,$STOCK3,$STOCK4], 1d)"
+    $CMD get_market_data_ex --stock-list "[\"$STOCK\",\"$STOCK2\",\"$STOCK3\",\"$STOCK4\"]" --period "1d" --start-time "20260101" --end-time "20260309" | truncate_output
     echo ""
 
     # echo "[9] get_full_kline([$STOCK], 1d, 20260201-20260228)"
@@ -228,6 +234,10 @@ if should_run "tick"; then
 
     echo "[13] get_full_tick([$STOCK,$STOCK2])"
     $CMD get_full_tick --code-list "[\"$STOCK\",\"$STOCK2\"]"
+    echo ""
+
+    echo "[13.1] get_full_tick([$STOCK,$STOCK2,$STOCK3,$STOCK4])"
+    $CMD get_full_tick --code-list "[\"$STOCK\",\"$STOCK2\",\"$STOCK3\",\"$STOCK4\"]"
     echo ""
 fi
 

@@ -67,54 +67,119 @@ xtdata [全局参数] <command> [API参数]
 | `--port` | XQSHARE_REMOTE_PORT | 服务端端口 |
 | `--secret` | XQSHARE_CLIENT_SECRET | 认证密钥 |
 | `--client-id` | XQSHARE_CLIENT_ID | 客户端标识 |
-| `--limit`, `-n` | - | 列表输出限制（默认50） |
+| `--format`, `-f` | XQSHARE_FORMAT | 输出格式: text/json/csv (默认: text) |
+| `--compact` | - | 紧凑模式输出 (仅对 json 格式有效) |
+| `--limit`, `-n` | - | 列表输出限制（默认50，0表示不限制） |
+| `--output`, `-o` | - | 输出文件路径 |
 | `--verbose`, `-v` | - | 显示详细日志 |
 
-## 常用命令
-
-### 获取股票列表
+**参数位置**：全局参数可放在 command 之前或之后，例如：
 ```bash
-xtdata get_stock_list_in_sector --sector-name "沪深A股"
-xtdata -n 100 get_stock_list_in_sector --sector-name "沪深300"
+# 两种写法都有效
+xtdata --format json --compact get_stock_list_in_sector --sector-name "沪深A股"
+xtdata get_stock_list_in_sector --sector-name "沪深A股" --format json --compact
 ```
+
+## 常用命令
 
 ### 获取板块列表
 ```bash
 xtdata get_sector_list
 ```
 
-### 获取K线数据
+### 获取股票列表
 ```bash
-# 日K线
-xtdata get_market_data_ex --stock-list "['000001.SZ']" --period "1d" --start-time "20250101"
+# text 格式（默认）
+xtdata get_stock_list_in_sector --sector-name "沪深A股"
 
-# 5分钟K线
-xtdata get_market_data_ex --stock-list "['000001.SZ','600000.SH']" --period "5m" --start-time "20250101"
+# json 格式
+xtdata -f json get_stock_list_in_sector --sector-name "沪深A股"
+
+# 紧凑 json 输出
+xtdata -f json --compact get_stock_list_in_sector --sector-name "沪深A股"
+
+# 限制输出数量
+xtdata -n 100 get_stock_list_in_sector --sector-name "沪深300"
 ```
 
-### 获取实时行情
+### 获取股票详情
 ```bash
-# get_full_tick 参数: code_list
-xtdata get_full_tick --code-list "['000001.SZ','600000.SH']"
+# 获取股票基础信息
+xtdata get_instrument_detail --stock-code "000001.SZ"
+
+# 获取分红除权因子
+xtdata get_divid_factors --stock-code "000001.SZ" --start-time "20240101" --end-time "20260101"
+```
+
+### 获取K线数据
+
+**get_market_data** - 返回 `{字段: DataFrame}` 结构（按字段组织）：
+```bash
+# 多只股票日K线
+xtdata get_market_data --stock-list "[\"000001.SZ\",\"600000.SH\"]" --period "1d" --start-time "20260101" --end-time "20260309"
+
+# json 格式输出
+xtdata -f json --compact get_market_data --stock-list "[\"000001.SZ\"]" --period "1d" --start-time "20260101"
+```
+
+**get_market_data_ex** - 返回 `{股票: DataFrame}` 结构（按股票组织，推荐）：
+```bash
+# 单只股票
+xtdata get_market_data_ex --stock-list "[\"000001.SZ\"]" --period "1d" --start-time "20260101" --end-time "20260309"
+
+# 多只股票
+xtdata get_market_data_ex --stock-list "[\"000001.SZ\",\"600000.SH\",\"000002.SZ\"]" --period "1d" --start-time "20260101"
+
+# 5分钟K线
+xtdata get_market_data_ex --stock-list "[\"000001.SZ\"]" --period "5m" --start-time "20260301" --end-time "20260309"
+
+# 使用 count 参数（获取最近N条）
+xtdata get_market_data_ex --stock-list "[\"000001.SZ\"]" --period "1d" --count 10
+
+# 前复权
+xtdata get_market_data_ex --stock-list "[\"000001.SZ\"]" --period "1d" --start-time "20260101" --dividend-type "front"
+```
+
+### 获取实时行情（五档盘口）
+```bash
+# 单只股票
+xtdata get_full_tick --code-list "[\"000001.SZ\"]"
+
+# 多只股票
+xtdata get_full_tick --code-list "[\"000001.SZ\",\"600000.SH\",\"000002.SZ\",\"600519.SH\"]"
+
+# json 格式
+xtdata -f json get_full_tick --code-list "[\"000001.SZ\",\"600000.SH\"]"
+```
+
+### 获取财务数据
+
+**注意**：查询财务数据前，需先下载：
+```bash
+# 下载财务数据
+xtdata download_financial_data2 --stock-list "[\"000001.SZ\"]" --table-list "[\"Balance\",\"Income\",\"CashFlow\"]"
+
+# 查询财务数据
+xtdata get_financial_data --stock-list "[\"000001.SZ\"]" --table-list "[\"Balance\",\"Income\"]"
 ```
 
 ### 下载历史数据
 
 **单只股票下载**：
 ```bash
-# download_history_data - 参数: stock_code, period, start_time, end_time
-xtdata download_history_data --stock-code "000001.SZ" --period "1d"
-xtdata download_history_data --stock-code "000001.SZ" --period "1d" --start-time "20250101" --end-time "20250228"
+xtdata download_history_data --stock-code "000001.SZ" --period "1d" --start-time "20250101" --end-time "20260309"
 ```
 
-**批量下载**：
+**批量下载（推荐）**：
 ```bash
-# download_history_data2 - 参数: stock_list, period, start_time, end_time
-xtdata download_history_data2 --stock-list "['000001.SZ','600000.SH']" --period "1d"
-xtdata download_history_data2 --stock-list "['000001.SZ','600000.SH']" --period "5m" --start-time "20250101"
+# 下载多只股票日K线
+xtdata download_history_data2 --stock-list "[\"000001.SZ\",\"600000.SH\"]" --period "1d" --start-time "20250101" --end-time "20260309"
+
+# 下载分钟线
+xtdata download_history_data2 --stock-list "[\"000001.SZ\"]" --period "5m" --start-time "20250101"
 ```
 
-**两个命令区别**：
+**下载命令对比**：
 | 命令 | 参数 | 说明 |
 |------|------|------|
 | `download_history_data` | `--stock-code` | 单只股票 |
@@ -122,15 +187,32 @@ xtdata download_history_data2 --stock-list "['000001.SZ','600000.SH']" --period 
 
 ## 数据准备提示
 
-**查询市场数据前，应确保数据已下载**：
+**⚠️ 重要：获取数据前必须先下载**
 
-- 如果是首次查询某只股票的数据，或数据可能不是最新的，应先执行下载命令
-- 下载命令会更新本地缓存，确保查询返回最新数据
+查询 K 线数据前，必须先下载对应股票的历史数据，否则会返回空数据或旧数据。
+
+**基础下载周期**：
+
+只有以下 3 个周期是基础数据，需要实际下载：
+| 周期 | 说明 |
+|------|------|
+| `1m` | 1分钟线 |
+| `5m` | 5分钟线 |
+| `1d` | 日线 |
+
+**派生周期**：其他周期（如 `15m`, `30m`, `60m`, `1w` 等）是基于基础周期计算得出，无需单独下载。
+
+**下载与查询对应关系**：
+
+| 数据类型 | 下载命令 | 查询命令 |
+|----------|----------|----------|
+| K线数据 | `download_history_data2` | `get_market_data_ex` |
+| 财务数据 | `download_financial_data2` | `get_financial_data` |
 
 **推荐流程**：
 ```
-1. 先下载: xtdata download_history_data2 --stock-list "['000001.SZ']" --period "1d"
-2. 再查询: xtdata get_market_data_ex --stock-list "['000001.SZ']" --period "1d" --start-time "20250101"
+1. 下载基础数据: xtdata download_history_data2 --stock-list "[\"000001.SZ\"]" --period "1d"
+2. 查询K线数据: xtdata get_market_data_ex --stock-list "[\"000001.SZ\"]" --period "1d" --start-time "20250101"
 ```
 
 **示例**：
@@ -138,10 +220,10 @@ xtdata download_history_data2 --stock-list "['000001.SZ','600000.SH']" --period 
 用户: 获取平安银行的日K线数据
 
 AI: 首次查询需要先下载数据...
-[执行] xtdata download_history_data2 --stock-list "['000001.SZ']" --period "1d"
+[执行] xtdata download_history_data2 --stock-list "[\"000001.SZ\"]" --period "1d"
 
 AI: 数据下载完成，现在获取K线数据...
-[执行] xtdata get_market_data_ex --stock-list "['000001.SZ']" --period "1d" --start-time "20250101"
+[执行] xtdata get_market_data_ex --stock-list "[\"000001.SZ\"]" --period "1d" --start-time "20250101"
 ```
 
 ## 限制
@@ -173,5 +255,13 @@ AI: 数据下载完成，现在获取K线数据...
 
 ## 参数格式
 
-- 列表参数：`"['item1','item2']"` (Python 列表格式)
-- 日期格式：`YYYYMMDD` 或 `YYYY-MM-DD`
+- **列表参数**：使用 JSON 数组格式，如 `"[\"000001.SZ\",\"600000.SH\"]"`
+- **日期格式**：`YYYYMMDD`（如 `20260101`）
+- **周期参数**：`1d`(日线), `5m`(5分钟), `1m`(1分钟)
+
+## 数据结构对比
+
+| API | 返回结构 | 特点 |
+|-----|----------|------|
+| `get_market_data` | `{字段: DataFrame}` | 按字段组织，每字段一个 DataFrame（行=股票，列=日期） |
+| `get_market_data_ex` | `{股票: DataFrame}` | 按股票组织，每股票一个 DataFrame（行=日期，列=字段），推荐 |
