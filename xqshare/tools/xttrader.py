@@ -98,7 +98,7 @@ def main():
 
             result = func(**params)
             limit = None if args.limit == 0 else args.limit
-            format_output(result, limit, args.output, output_format)
+            format_output(result, limit, args.output, output_format, args.compact)
         finally:
             trader.stop()
 
