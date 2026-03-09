@@ -206,10 +206,24 @@ def _format_as_json(result):
             # 本地 DataFrame：直接转换
             return result.to_dict(orient='records')
     elif isinstance(result, dict):
+        if _is_remote_object(result):
+            result = dict(result)
         return {k: _format_as_json(v) for k, v in result.items()}
     elif isinstance(result, (list, tuple)):
+        if _is_remote_object(result):
+            result = list(result)
         return [_format_as_json(item) for item in result]
     elif hasattr(result, '__dict__'):
+        # 对于远程对象，直接使用 __dict__ 避免 dir() 遍历
+        if _is_remote_object(result):
+            try:
+                attrs = result.__dict__
+                if isinstance(attrs, dict):
+                    return {k: _format_as_json(v) for k, v in attrs.items()
+                            if not k.startswith('_')}
+            except Exception:
+                pass
+        # 本地对象：使用 dir() 遍历
         return {attr: _format_as_json(getattr(result, attr))
                 for attr in dir(result)
                 if not attr.startswith('_') and not callable(getattr(result, attr))}
