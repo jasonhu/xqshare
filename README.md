@@ -69,7 +69,7 @@ python -m xqshare.server
 ### 客户端快速测试
 
 ```bash
-export XTQUANT_REMOTE_HOST="192.168.1.100"
+export XQSHARE_REMOTE_HOST="192.168.1.100"
 xtdata get_stock_list_in_sector --sector-name "沪深A股" --limit 10
 ```
 
@@ -118,10 +118,10 @@ xttrader --account-id "12345678" order_stock --stock-code "000001.SZ" --order-ty
 
 | 参数 | 环境变量 | 说明 |
 |------|----------|------|
-| `--host` | XTQUANT_REMOTE_HOST | 服务端地址 |
-| `--port` | XTQUANT_REMOTE_PORT | 服务端端口 |
-| `--secret` | XTQUANT_CLIENT_SECRET | 认证密钥 |
-| `--client-id` | XTQUANT_CLIENT_ID | 客户端标识 |
+| `--host` | XQSHARE_REMOTE_HOST | 服务端地址 |
+| `--port` | XQSHARE_REMOTE_PORT | 服务端端口 |
+| `--secret` | XQSHARE_CLIENT_SECRET | 认证密钥 |
+| `--client-id` | XQSHARE_CLIENT_ID | 客户端标识 |
 | `--limit`, `-n` | - | 列表输出数量限制（默认50） |
 | `--verbose`, `-v` | - | 显示详细日志 |
 
@@ -140,8 +140,8 @@ xttrader --account-id "12345678" order_stock --stock-code "000001.SZ" --order-ty
 **推荐：使用环境变量配置（避免敏感信息泄露）**
 ```bash
 # 设置环境变量
-export XTQUANT_REMOTE_HOST="192.168.1.100"
-export XTQUANT_CLIENT_SECRET="your-secret"
+export XQSHARE_REMOTE_HOST="192.168.1.100"
+export XQSHARE_CLIENT_SECRET="your-secret"
 
 # 获取股票列表
 python examples/get_stock_list.py --sector "沪深300"
@@ -162,8 +162,8 @@ python examples/subscribe_quote.py --codes "000001.SZ" --duration 60
 **交易功能（需要额外配置）:**
 ```bash
 # 设置交易相关环境变量
-export XTQUANT_ACCOUNT_ID="12345678"
-export XTQUANT_USERDATA_PATH="C:\\QMT\\userdata_mini"
+export QMT_ACCOUNT_ID="12345678"
+export QMT_USERDATA_PATH="C:\\QMT\\userdata_mini"
 
 # 查询持仓
 python examples/query_positions.py
@@ -346,8 +346,8 @@ xt = XtQuantRemote("192.168.1.100", log_level="DEBUG")
 
 服务端为每个客户端配置独立密钥：
 ```bash
-export XTQUANT_CLIENT_app1="secret-for-app1"
-export XTQUANT_CLIENT_app2="secret-for-app2"
+export XQSHARE_CLIENT_app1="secret-for-app1"
+export XQSHARE_CLIENT_app2="secret-for-app2"
 ```
 
 客户端：

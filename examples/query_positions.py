@@ -9,17 +9,17 @@
   - 需要提供客户端的 userdata 路径
 
 环境变量:
-  XTQUANT_REMOTE_HOST     - 服务端地址
-  XTQUANT_REMOTE_PORT     - 服务端端口
-  XTQUANT_CLIENT_SECRET   - 认证密钥
-  XTQUANT_ACCOUNT_ID      - 资金账号
-  XTQUANT_USERDATA_PATH   - QMT客户端 userdata_mini 目录路径
+  XQSHARE_REMOTE_HOST     - 服务端地址
+  XQSHARE_REMOTE_PORT     - 服务端端口
+  XQSHARE_CLIENT_SECRET   - 认证密钥
+  QMT_ACCOUNT_ID      - 资金账号
+  QMT_USERDATA_PATH   - QMT客户端 userdata_mini 目录路径
 
 使用示例:
     # 使用环境变量配置（推荐）
-    export XTQUANT_REMOTE_HOST="192.168.1.100"
-    export XTQUANT_ACCOUNT_ID="12345678"
-    export XTQUANT_USERDATA_PATH="C:\\QMT\\userdata_mini"
+    export XQSHARE_REMOTE_HOST="192.168.1.100"
+    export QMT_ACCOUNT_ID="12345678"
+    export QMT_USERDATA_PATH="C:\\QMT\\userdata_mini"
     python examples/query_positions.py
 
     # 命令行参数（覆盖环境变量）
@@ -133,38 +133,38 @@ def main():
   - 交易功能需要在 Windows 服务端正确配置券商接口
         """
     )
-    parser.add_argument("--host", help="服务端地址 (默认: 环境变量 XTQUANT_REMOTE_HOST 或 localhost)")
-    parser.add_argument("--port", type=int, help="服务端端口 (默认: 环境变量 XTQUANT_REMOTE_PORT 或 18812)")
-    parser.add_argument("--secret", help="认证密钥 (默认: 环境变量 XTQUANT_CLIENT_SECRET)")
-    parser.add_argument("--account-id", help="资金账号 (默认: 环境变量 XTQUANT_ACCOUNT_ID)")
+    parser.add_argument("--host", help="服务端地址 (默认: 环境变量 XQSHARE_REMOTE_HOST 或 localhost)")
+    parser.add_argument("--port", type=int, help="服务端端口 (默认: 环境变量 XQSHARE_REMOTE_PORT 或 18812)")
+    parser.add_argument("--secret", help="认证密钥 (默认: 环境变量 XQSHARE_CLIENT_SECRET)")
+    parser.add_argument("--account-id", help="资金账号 (默认: 环境变量 QMT_ACCOUNT_ID)")
     parser.add_argument("--account-type", default="STOCK",
                         choices=list(ACCOUNT_TYPES.keys()),
                         help=f"账户类型 (默认: STOCK)")
-    parser.add_argument("--path", help="QMT客户端 userdata_mini 目录路径 (默认: 环境变量 XTQUANT_USERDATA_PATH)")
+    parser.add_argument("--path", help="QMT客户端 userdata_mini 目录路径 (默认: 环境变量 QMT_USERDATA_PATH)")
 
     args = parser.parse_args()
 
     # 从环境变量读取私密配置
-    account_id = args.account_id or os.environ.get("XTQUANT_ACCOUNT_ID")
-    userdata_path = args.path or os.environ.get("XTQUANT_USERDATA_PATH")
+    account_id = args.account_id or os.environ.get("QMT_ACCOUNT_ID")
+    userdata_path = args.path or os.environ.get("QMT_USERDATA_PATH")
 
     if not account_id:
         print("错误: 必须提供资金账号")
-        print("  方式1: 设置环境变量 XTQUANT_ACCOUNT_ID")
+        print("  方式1: 设置环境变量 QMT_ACCOUNT_ID")
         print("  方式2: 使用 --account-id 参数")
         return
 
     if not userdata_path:
         print("错误: 必须提供 userdata_mini 目录路径")
-        print("  方式1: 设置环境变量 XTQUANT_USERDATA_PATH")
+        print("  方式1: 设置环境变量 QMT_USERDATA_PATH")
         print("  方式2: 使用 --path 参数")
         print("  示例: --path \"C:\\\\QMT\\\\userdata_mini\"")
         return
 
     # 连接服务端（支持环境变量）
     trader = None
-    host_display = args.host or os.environ.get("XTQUANT_REMOTE_HOST", "localhost")
-    port_display = args.port or int(os.environ.get("XTQUANT_REMOTE_PORT", "18812"))
+    host_display = args.host or os.environ.get("XQSHARE_REMOTE_HOST", "localhost")
+    port_display = args.port or int(os.environ.get("XQSHARE_REMOTE_PORT", "18812"))
     print(f"正在连接 {host_display}:{port_display}...")
     xt = XtQuantRemote(
         host=args.host,

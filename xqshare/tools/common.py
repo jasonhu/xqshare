@@ -12,10 +12,10 @@ from pprint import pprint
 from contextlib import contextmanager
 
 # 环境变量名
-ENV_HOST = "XTQUANT_REMOTE_HOST"
-ENV_PORT = "XTQUANT_REMOTE_PORT"
-ENV_SECRET = "XTQUANT_CLIENT_SECRET"
-ENV_CLIENT_ID = "XTQUANT_CLIENT_ID"
+ENV_HOST = "XQSHARE_REMOTE_HOST"
+ENV_PORT = "XQSHARE_REMOTE_PORT"
+ENV_SECRET = "XQSHARE_CLIENT_SECRET"
+ENV_CLIENT_ID = "XQSHARE_CLIENT_ID"
 
 
 @contextmanager
@@ -179,10 +179,10 @@ def _format_object(obj):
 
 def add_global_args(parser):
     """添加全局参数"""
-    parser.add_argument("--host", help="服务端地址，可通过 XTQUANT_REMOTE_HOST 环境变量设置")
-    parser.add_argument("--port", type=int, help="服务端端口，可通过 XTQUANT_REMOTE_PORT 环境变量设置")
-    parser.add_argument("--secret", help="认证密钥，可通过 XTQUANT_CLIENT_SECRET 环境变量设置")
-    parser.add_argument("--client-id", dest="client_id", help="客户端标识，可通过 XTQUANT_CLIENT_ID 环境变量设置")
+    parser.add_argument("--host", help="服务端地址，可通过 XQSHARE_REMOTE_HOST 环境变量设置")
+    parser.add_argument("--port", type=int, help="服务端端口，可通过 XQSHARE_REMOTE_PORT 环境变量设置")
+    parser.add_argument("--secret", help="认证密钥，可通过 XQSHARE_CLIENT_SECRET 环境变量设置")
+    parser.add_argument("--client-id", dest="client_id", help="客户端标识，可通过 XQSHARE_CLIENT_ID 环境变量设置")
     parser.add_argument("--limit", "-n", type=int, default=50, help="列表输出数量限制 (默认: 50，0 表示不限制)")
     parser.add_argument("--verbose", "-v", action="store_true", help="显示详细日志")
     return parser
@@ -190,8 +190,8 @@ def add_global_args(parser):
 
 def add_trader_args(parser):
     """添加交易相关参数"""
-    parser.add_argument("--userdata-path", help="QMT客户端 userdata_mini 目录路径 (环境变量: XTQUANT_USERDATA_PATH)")
-    parser.add_argument("--account-id", help="资金账号 (环境变量: XTQUANT_ACCOUNT_ID)")
+    parser.add_argument("--userdata-path", help="QMT客户端 userdata_mini 目录路径 (环境变量: QMT_USERDATA_PATH)")
+    parser.add_argument("--account-id", help="资金账号 (环境变量: QMT_ACCOUNT_ID)")
     parser.add_argument("--account-type", default="STOCK", choices=["STOCK", "CREDIT", "FUTURE", "HUGANGTONG", "SHENGANGTONG"],
                         help="账户类型 (默认: STOCK)")
     return parser
@@ -214,15 +214,15 @@ def create_trader(xt, userdata_path, account_id, account_type):
     # 从环境变量获取默认值
     if not userdata_path:
         import os
-        userdata_path = os.environ.get("XTQUANT_USERDATA_PATH")
+        userdata_path = os.environ.get("QMT_USERDATA_PATH")
     if not account_id:
         import os
-        account_id = os.environ.get("XTQUANT_ACCOUNT_ID")
+        account_id = os.environ.get("QMT_ACCOUNT_ID")
 
     if not userdata_path:
-        raise ValueError("必须提供 userdata_path 参数或设置 XTQUANT_USERDATA_PATH 环境变量")
+        raise ValueError("必须提供 userdata_path 参数或设置 QMT_USERDATA_PATH 环境变量")
     if not account_id:
-        raise ValueError("必须提供 account_id 参数或设置 XTQUANT_ACCOUNT_ID 环境变量")
+        raise ValueError("必须提供 account_id 参数或设置 QMT_ACCOUNT_ID 环境变量")
 
     # 创建交易实例
     session_id = int(time.time())
