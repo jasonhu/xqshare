@@ -143,6 +143,10 @@ if [[ "$SKIP_DOWNLOAD" != true ]] && should_run "download"; then
     echo "[2] download_history_data2 - 批量下载历史数据"
     $CMD download_history_data2 --stock-list "[\"$STOCK\",\"$STOCK2\"]" --period "1d" --start-time "20250101" --end-time "20260309"
     echo ""
+
+    echo "[2.1] download_financial_data - 下载财务数据"
+    $CMD download_financial_data2 --stock-list "[\"$STOCK\"]" --table-list "[\"Balance\",\"Income\",\"CashFlow\"]"
+    echo ""
 fi
 
 # ==================== BASIC 级别 ====================
@@ -180,9 +184,9 @@ if should_run "daily"; then
     $CMD get_market_data_ex --stock-list "[\"$STOCK\"]" --period "1d" --start-time "20260101" --end-time "20260309" | truncate_output
     echo ""
 
-    echo "[9] get_full_kline - 获取完整K线"
-    $CMD get_full_kline --stock-list "[\"$STOCK\"]" --period "1d" --start-time "20260201" --end-time "20260228" | truncate_output
-    echo ""
+    # echo "[9] get_full_kline - 获取完整K线"
+    # $CMD get_full_kline --stock-list "[\"$STOCK\"]" --period "1d" --start-time "20260201" --end-time "20260228" | truncate_output
+    # echo ""
 fi
 
 # ==================== MINUTE 级别 ====================
@@ -215,7 +219,7 @@ if should_run "tick"; then
     echo "--- TICK 级别 ---"
 
     echo "[13] get_full_tick - 获取全推Tick"
-    $CMD get_full_tick --stock-list "[\"$STOCK\",\"$STOCK2\"]"
+    $CMD get_full_tick --code-list "[\"$STOCK\",\"$STOCK2\"]"
     echo ""
 fi
 

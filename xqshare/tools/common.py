@@ -145,11 +145,14 @@ def parse_kv_args(args_list):
 
 def preprocess_params(params):
     """预处理复杂参数（JSON/Python 字面量反序列化）"""
+    # 需要转换为整数的参数名
+    INT_PARAMS = {'count', 'limit', 'n', 'offset'}
+
     for key, value in params.items():
         if not isinstance(value, str):
             continue
 
-        # 尝试解析为 Python 字面量（列表、字典、数字等）
+        # 列表/字典：使用 ast.literal_eval
         if value.startswith('[') or value.startswith('{'):
             try:
                 params[key] = ast.literal_eval(value)
@@ -157,11 +160,20 @@ def preprocess_params(params):
             except (ValueError, SyntaxError):
                 pass
 
-        # 尝试解析为 JSON
-        if value.startswith('{'):
+        # 布尔值
+        if value.lower() == 'true':
+            params[key] = True
+            continue
+        if value.lower() == 'false':
+            params[key] = False
+            continue
+
+        # 特定的整数参数
+        if key in INT_PARAMS:
             try:
-                params[key] = json.loads(value)
-            except json.JSONDecodeError:
+                params[key] = int(value)
+                continue
+            except ValueError:
                 pass
 
     # StockAccount 参数特殊处理
