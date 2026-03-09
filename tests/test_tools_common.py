@@ -257,6 +257,28 @@ class TestFormatOutput:
         parsed = json.loads(captured.out)
         assert parsed == {"items": [1, 2, 3]}
 
+    def test_json_format_compact(self, capsys, tmp_path):
+        """JSON 紧凑模式应无缩进输出"""
+        data = {"items": [1, 2, 3]}
+        # 紧凑模式
+        format_output(data, output_format="json", compact=True)
+        captured = capsys.readouterr()
+        # 紧凑模式应该没有换行
+        assert "\n" not in captured.out.strip()
+        # 验证输出是有效 JSON
+        parsed = json.loads(captured.out)
+        assert parsed == {"items": [1, 2, 3]}
+
+    def test_json_format_pretty(self, capsys, tmp_path):
+        """JSON pretty 模式应有缩进输出"""
+        data = {"items": [1, 2, 3]}
+        # pretty 模式（默认）
+        format_output(data, output_format="json", compact=False)
+        captured = capsys.readouterr()
+        # pretty 模式应该有换行和缩进
+        assert "\n" in captured.out
+        assert "  " in captured.out  # 2 空格缩进
+
     def test_json_format_with_dataframe(self, capsys, tmp_path):
         """JSON 格式应将 DataFrame 转换为 records"""
         df = pd.DataFrame({"x": [1, 2], "y": [3, 4]})

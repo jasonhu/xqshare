@@ -208,7 +208,7 @@ def _format_as_csv(result):
         return pformat(result) + "\n"
 
 
-def format_output(result, limit=None, output=None, output_format='text'):
+def format_output(result, limit=None, output=None, output_format='text', compact=False):
     """根据返回类型自动格式化输出
 
     Args:
@@ -216,12 +216,14 @@ def format_output(result, limit=None, output=None, output_format='text'):
         limit: 列表/元组输出数量限制，None 表示不限制
         output: 输出文件路径，None 表示输出到控制台
         output_format: 输出格式（text/json/csv），默认 text
+        compact: 是否使用紧凑模式（仅对 json 格式有效），默认 False
     """
     from pathlib import Path
 
     if output_format == 'json':
         data = _format_as_json(result)
-        content = json.dumps(data, ensure_ascii=False, indent=2)
+        indent = None if compact else 2
+        content = json.dumps(data, ensure_ascii=False, indent=indent)
 
     elif output_format == 'csv':
         content = _format_as_csv(result)
@@ -267,6 +269,7 @@ def add_global_args(parser):
     parser.add_argument("--output", "-o", help="输出文件路径")
     parser.add_argument("--format", "-f", dest="output_format", choices=["text", "json", "csv"],
                         help="输出格式 (环境变量: XQSHARE_FORMAT, 默认: text)")
+    parser.add_argument("--compact", action="store_true", help="紧凑模式输出 (仅对 json 格式有效)")
     return parser
 
 
