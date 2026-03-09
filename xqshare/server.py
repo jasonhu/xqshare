@@ -184,23 +184,33 @@ def _serialize_for_transfer(result):
     except ImportError:
         pass
 
-    # 字典: 检查是否包含 DataFrame，需要特殊处理
+    # 字典: 检查是否包含 DataFrame（递归检查）
     if isinstance(result, dict):
         try:
             import pandas as pd
-            # 检查是否有 DataFrame 值
-            has_dataframe = any(isinstance(v, pd.DataFrame) for v in result.values())
-            if has_dataframe:
-                # 将字典中的 DataFrame 转为 CSV 字符串
-                serialized_dict = {}
-                for k, v in result.items():
-                    if isinstance(v, pd.DataFrame):
-                        serialized_dict[k] = {
-                            "__df__": True,
-                            "csv": v.to_csv(index=True)
-                        }
-                    else:
-                        serialized_dict[k] = v
+
+            def has_dataframe_recursive(obj):
+                """递归检查对象中是否包含 DataFrame"""
+                if isinstance(obj, pd.DataFrame):
+                    return True
+                if isinstance(obj, dict):
+                    return any(has_dataframe_recursive(v) for v in obj.values())
+                if isinstance(obj, (list, tuple)):
+                    return any(has_dataframe_recursive(item) for item in obj)
+                return False
+
+            def serialize_dataframes(obj):
+                """递归序列化 DataFrame"""
+                if isinstance(obj, pd.DataFrame):
+                    return {"__df__": True, "csv": obj.to_csv(index=True)}
+                if isinstance(obj, dict):
+                    return {k: serialize_dataframes(v) for k, v in obj.items()}
+                if isinstance(obj, (list, tuple)):
+                    return [serialize_dataframes(item) for item in obj]
+                return obj
+
+            if has_dataframe_recursive(result):
+                serialized_dict = serialize_dataframes(result)
                 json_str = json.dumps(serialized_dict, ensure_ascii=False, default=str)
                 return {SERIALIZED_MARKER: "dict_with_dataframe", "data": json_str}
         except ImportError:

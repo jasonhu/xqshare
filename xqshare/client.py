@@ -113,14 +113,19 @@ def _deserialize_from_transfer(result):
         import io
         try:
             import pandas as pd
-            deserialized_dict = json.loads(data)
-            result_dict = {}
-            for k, v in deserialized_dict.items():
-                if isinstance(v, dict) and v.get("__df__"):
-                    result_dict[k] = pd.read_csv(io.StringIO(v["csv"]), index_col=0)
-                else:
-                    result_dict[k] = v
-            return result_dict
+
+            def deserialize_dataframes(obj):
+                """递归反序列化 DataFrame"""
+                if isinstance(obj, dict):
+                    if obj.get("__df__"):
+                        return pd.read_csv(io.StringIO(obj["csv"]), index_col=0)
+                    return {k: deserialize_dataframes(v) for k, v in obj.items()}
+                if isinstance(obj, list):
+                    return [deserialize_dataframes(item) for item in obj]
+                return obj
+
+            deserialized = json.loads(data)
+            return deserialize_dataframes(deserialized)
         except ImportError:
             # 无 pandas 时返回原始 JSON
             return json.loads(data)

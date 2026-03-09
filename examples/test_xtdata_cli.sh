@@ -26,6 +26,7 @@ ONLY=""
 EXCLUDE=""
 STOCK="000001.SZ"
 STOCK2="600000.SH"
+FULL_OUTPUT=false
 
 # ==================== 解析参数 ====================
 while [[ $# -gt 0 ]]; do
@@ -70,6 +71,10 @@ while [[ $# -gt 0 ]]; do
             STOCK="$2"
             shift 2
             ;;
+        --full)
+            FULL_OUTPUT=true
+            shift
+            ;;
         --help|-h)
             echo "用法: $0 [选项]"
             echo ""
@@ -84,6 +89,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --only LEVEL        只运行指定级别: basic/daily/minute/financial/tick"
             echo "  --exclude LEVEL     排除指定级别"
             echo "  --stock CODE        测试股票代码 (默认: 000001.SZ)"
+            echo "  --full              显示完整输出（不截断）"
             echo "  --help, -h          显示帮助"
             exit 0
             ;;
@@ -112,7 +118,9 @@ should_run() {
 
 # 辅助函数：截断输出
 truncate_output() {
-    if [[ "$FORMAT" == "json" ]]; then
+    if [[ "$FULL_OUTPUT" == true ]]; then
+        cat
+    elif [[ "$FORMAT" == "json" ]]; then
         head -c 300 && echo "..."
     else
         head -n 10
@@ -136,15 +144,15 @@ if [[ "$SKIP_DOWNLOAD" != true ]] && should_run "download"; then
     echo ""
     echo "--- 数据下载 ---"
 
-    echo "[1] download_history_data - 下载历史数据（单只）"
+    echo "[1] download_history_data($STOCK, 1d, 20250101-20260309)"
     $CMD download_history_data --stock-code "$STOCK" --period "1d" --start-time "20250101" --end-time "20260309"
     echo ""
 
-    echo "[2] download_history_data2 - 批量下载历史数据"
+    echo "[2] download_history_data2([$STOCK,$STOCK2], 1d, 20250101-20260309)"
     $CMD download_history_data2 --stock-list "[\"$STOCK\",\"$STOCK2\"]" --period "1d" --start-time "20250101" --end-time "20260309"
     echo ""
 
-    echo "[2.1] download_financial_data - 下载财务数据"
+    echo "[2.1] download_financial_data2([$STOCK], [Balance,Income,CashFlow])"
     $CMD download_financial_data2 --stock-list "[\"$STOCK\"]" --table-list "[\"Balance\",\"Income\",\"CashFlow\"]"
     echo ""
 fi
@@ -154,19 +162,19 @@ if should_run "basic"; then
     echo ""
     echo "--- BASIC 级别 ---"
 
-    echo "[3] get_sector_list - 获取板块列表"
+    echo "[3] get_sector_list()"
     $CMD get_sector_list | truncate_output
     echo ""
 
-    echo "[4] get_stock_list_in_sector - 获取股票列表"
+    echo "[4] get_stock_list_in_sector(沪深A股)"
     $CMD get_stock_list_in_sector --sector-name "沪深A股" | truncate_output
     echo ""
 
-    echo "[5] get_instrument_detail - 获取股票详情"
+    echo "[5] get_instrument_detail($STOCK)"
     $CMD get_instrument_detail --stock-code "$STOCK"
     echo ""
 
-    echo "[6] get_divid_factors - 获取分红因子"
+    echo "[6] get_divid_factors($STOCK, 20240101-20260101)"
     $CMD get_divid_factors --stock-code "$STOCK" --start-time "20240101" --end-time "20260101" | truncate_output
     echo ""
 fi
@@ -176,15 +184,15 @@ if should_run "daily"; then
     echo ""
     echo "--- DAILY 级别 (日线) ---"
 
-    echo "[7] get_market_data - 获取日线数据"
+    echo "[7] get_market_data([$STOCK], 1d, 20260101-20260309)"
     $CMD get_market_data --stock-list "[\"$STOCK\"]" --period "1d" --start-time "20260101" --end-time "20260309" | truncate_output
     echo ""
 
-    echo "[8] get_market_data_ex - 获取日线数据"
+    echo "[8] get_market_data_ex([$STOCK], 1d, 20260101-20260309)"
     $CMD get_market_data_ex --stock-list "[\"$STOCK\"]" --period "1d" --start-time "20260101" --end-time "20260309" | truncate_output
     echo ""
 
-    # echo "[9] get_full_kline - 获取完整K线"
+    # echo "[9] get_full_kline([$STOCK], 1d, 20260201-20260228)"
     # $CMD get_full_kline --stock-list "[\"$STOCK\"]" --period "1d" --start-time "20260201" --end-time "20260228" | truncate_output
     # echo ""
 fi
@@ -194,11 +202,11 @@ if should_run "minute"; then
     echo ""
     echo "--- MINUTE 级别 (分钟线) ---"
 
-    echo "[10] get_market_data - 获取5分钟数据"
+    echo "[10] get_market_data([$STOCK], 5m, 20260301-20260309)"
     $CMD get_market_data --stock-list "[\"$STOCK\"]" --period "5m" --start-time "20260301" --end-time "20260309" | truncate_output
     echo ""
 
-    echo "[11] get_market_data_ex - 获取5分钟数据"
+    echo "[11] get_market_data_ex([$STOCK], 5m, 20260301-20260309)"
     $CMD get_market_data_ex --stock-list "[\"$STOCK\"]" --period "5m" --start-time "20260301" --end-time "20260309" | truncate_output
     echo ""
 fi
@@ -208,7 +216,7 @@ if should_run "financial"; then
     echo ""
     echo "--- 财务数据 ---"
 
-    echo "[12] get_financial_data - 获取财务数据"
+    echo "[12] get_financial_data([$STOCK], [Balance,Income])"
     $CMD get_financial_data --stock-list "[\"$STOCK\"]" --table-list "[\"Balance\",\"Income\"]" | truncate_output
     echo ""
 fi
@@ -218,7 +226,7 @@ if should_run "tick"; then
     echo ""
     echo "--- TICK 级别 ---"
 
-    echo "[13] get_full_tick - 获取全推Tick"
+    echo "[13] get_full_tick([$STOCK,$STOCK2])"
     $CMD get_full_tick --code-list "[\"$STOCK\",\"$STOCK2\"]"
     echo ""
 fi
@@ -228,7 +236,7 @@ if should_run "daily"; then
     echo ""
     echo "--- 复权模式 ---"
 
-    echo "[14] get_market_data_ex - 前复权"
+    echo "[14] get_market_data_ex([$STOCK], 1d, dividend=front)"
     $CMD get_market_data_ex --stock-list "[\"$STOCK\"]" --period "1d" --start-time "20260101" --end-time "20260309" --dividend-type "front" | truncate_output
     echo ""
 fi
@@ -238,7 +246,7 @@ if should_run "daily"; then
     echo ""
     echo "--- count 参数 ---"
 
-    echo "[15] get_market_data_ex - 获取最近10条"
+    echo "[15] get_market_data_ex([$STOCK], 1d, count=10)"
     $CMD get_market_data_ex --stock-list "[\"$STOCK\"]" --period "1d" --count 10 | truncate_output
     echo ""
 fi
