@@ -8,7 +8,6 @@ import os
 import json
 import ast
 import argparse
-from pprint import pprint
 from contextlib import contextmanager
 
 # 环境变量名
@@ -16,6 +15,7 @@ ENV_HOST = "XQSHARE_REMOTE_HOST"
 ENV_PORT = "XQSHARE_REMOTE_PORT"
 ENV_SECRET = "XQSHARE_CLIENT_SECRET"
 ENV_CLIENT_ID = "XQSHARE_CLIENT_ID"
+ENV_FORMAT = "XQSHARE_FORMAT"
 
 
 @contextmanager
@@ -96,67 +96,113 @@ def preprocess_params(params):
     return params
 
 
-def format_output(result, limit=None):
+def _to_json_serializable(result):
+    """将结果转换为 JSON 可序列化格式"""
+    import pandas as pd
+    from datetime import datetime
+
+    if result is None:
+        return None
+    elif isinstance(result, pd.DataFrame):
+        return result.to_dict(orient='records')
+    elif isinstance(result, dict):
+        return {k: _to_json_serializable(v) for k, v in result.items()}
+    elif isinstance(result, (list, tuple)):
+        return [_to_json_serializable(item) for item in result]
+    elif hasattr(result, '__dict__'):
+        return {attr: _to_json_serializable(getattr(result, attr))
+                for attr in dir(result)
+                if not attr.startswith('_') and not callable(getattr(result, attr))}
+    elif isinstance(result, datetime):
+        return result.isoformat()
+    else:
+        return result
+
+
+def _format_text_output(result, limit=None):
+    """将结果格式化为文本输出"""
+    import pandas as pd
+    from pprint import pformat
+    import io
+
+    output = io.StringIO()
+
+    if result is None:
+        output.write("None")
+    elif isinstance(result, pd.DataFrame):
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', None)
+        output.write(result.to_string())
+    elif isinstance(result, dict):
+        has_dataframe = any(isinstance(v, pd.DataFrame) for v in result.values())
+        if has_dataframe:
+            for key, value in result.items():
+                output.write(f"\n=== {key} ===\n")
+                if isinstance(value, pd.DataFrame):
+                    output.write(value.to_string())
+                else:
+                    output.write(pformat(value))
+        else:
+            output.write(pformat(result))
+    elif isinstance(result, (list, tuple)):
+        total = len(result)
+        display = result[:limit] if limit and total > limit else result
+        for i, item in enumerate(display, 1):
+            if hasattr(item, '__dict__') or hasattr(item, '__slots__'):
+                output.write(f"[{i}] {_format_object(item)}\n")
+            else:
+                output.write(f"[{i}] {item}\n")
+        if limit and total > limit:
+            output.write(f"\n# 共 {total} 条，已显示前 {limit} 条")
+    else:
+        output.write(pformat(result))
+
+    return output.getvalue()
+
+
+def format_output(result, limit=None, output=None, output_format='text'):
     """根据返回类型自动格式化输出
 
     Args:
         result: API 返回结果
         limit: 列表/元组输出数量限制，None 表示不限制
+        output: 输出文件路径，None 表示输出到控制台
+        output_format: 输出格式（text/json/csv），默认 text
     """
     import pandas as pd
+    from pprint import pformat
+    from pathlib import Path
 
-    if result is None:
-        print("None")
-    elif isinstance(result, pd.DataFrame):
-        # DataFrame 输出
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.width', None)
-        print(result.to_string())
-    elif isinstance(result, dict):
-        # 检查是否是 {stock: DataFrame} 格式
-        has_dataframe = any(isinstance(v, pd.DataFrame) for v in result.values())
-        if has_dataframe:
-            pd.set_option('display.max_columns', None)
-            pd.set_option('display.width', None)
+    if output_format == 'json':
+        data = _to_json_serializable(result)
+        content = json.dumps(data, ensure_ascii=False, indent=2)
+
+    elif output_format == 'csv':
+        if isinstance(result, pd.DataFrame):
+            content = result.to_csv(index=True)
+        elif isinstance(result, dict) and any(isinstance(v, pd.DataFrame) for v in result.values()):
+            lines = []
             for key, value in result.items():
-                print(f"\n=== {key} ===")
                 if isinstance(value, pd.DataFrame):
-                    print(value.to_string())
+                    lines.append(f"# {key}")
+                    lines.append(value.to_csv(index=True))
                 else:
-                    pprint(value)
+                    lines.append(f"# {key}: {value}")
+            content = "\n".join(lines)
         else:
-            pprint(result)
-    elif isinstance(result, (list, tuple)):
-        total = len(result)
-        if limit is not None and total > limit:
-            display_data = result[:limit]
-            _print_list(display_data)
-            print(f"\n# 共 {total} 条，已显示前 {limit} 条")
-        else:
-            _print_list(result)
-            if total > 10:
-                print(f"\n# 共 {total} 条")
+            content = pformat(result)
+        content += "\n"
+
     else:
-        # 单个对象，尝试显示属性
-        _print_object(result)
+        content = _format_text_output(result, limit)
 
-
-def _print_list(items):
-    """打印列表，处理对象类型"""
-    for i, item in enumerate(items, 1):
-        if hasattr(item, '__dict__') or hasattr(item, '__slots__'):
-            # 是一个对象，显示属性
-            print(f"[{i}] {_format_object(item)}")
-        else:
-            print(f"[{i}] {item}")
-
-
-def _print_object(obj):
-    """打印单个对象"""
-    if hasattr(obj, '__dict__') or hasattr(obj, '__slots__'):
-        pprint(_format_object(obj))
+    if output:
+        Path(output).parent.mkdir(parents=True, exist_ok=True)
+        with open(output, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"结果已保存到: {output}")
     else:
-        pprint(obj)
+        print(content)
 
 
 def _format_object(obj):
@@ -185,6 +231,9 @@ def add_global_args(parser):
     parser.add_argument("--client-id", dest="client_id", help="客户端标识，可通过 XQSHARE_CLIENT_ID 环境变量设置")
     parser.add_argument("--limit", "-n", type=int, default=50, help="列表输出数量限制 (默认: 50，0 表示不限制)")
     parser.add_argument("--verbose", "-v", action="store_true", help="显示详细日志")
+    parser.add_argument("--output", "-o", help="输出文件路径")
+    parser.add_argument("--format", "-f", dest="output_format", choices=["text", "json", "csv"],
+                        help="输出格式 (环境变量: XQSHARE_FORMAT, 默认: text)")
     return parser
 
 

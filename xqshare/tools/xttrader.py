@@ -21,10 +21,11 @@ xttrader - 交易命令行工具
 """
 
 import sys
+import os
 import argparse
 from .common import (
     create_client, parse_kv_args, preprocess_params,
-    format_output, add_global_args, add_trader_args, create_trader
+    format_output, add_global_args, add_trader_args, create_trader, ENV_FORMAT
 )
 
 
@@ -61,6 +62,9 @@ def main():
 
     args = parser.parse_args()
 
+    # 补充环境变量默认值
+    output_format = args.output_format or os.environ.get(ENV_FORMAT, "text")
+
     # 拒绝订阅相关命令
     if args.command.startswith('subscribe') or args.command.startswith('register'):
         print(f"错误: 命令行工具不支持订阅/回调功能 '{args.command}'", file=sys.stderr)
@@ -94,7 +98,7 @@ def main():
 
             result = func(**params)
             limit = None if args.limit == 0 else args.limit
-            format_output(result, limit)
+            format_output(result, limit, args.output, output_format)
         finally:
             trader.stop()
 
