@@ -52,56 +52,25 @@ pip install -e .
 pip install rpyc
 ```
 
-## 快速开始
+## 快速启动
 
-### 1. Windows 服务端
+### 启动前准备
 
-**环境变量：**
-```bash
-export XTQUANT_PORT="18812"                    # 监听端口
-export XTQUANT_LOG_DIR="logs"                  # 日志目录
-export XTQUANT_CLIENT_SECRET="default-secret"  # 认证密钥
-# export XTQUANT_CLIENT_app1="xxx"             # 特定客户端密钥
+**服务端（Windows）：** Python 环境 | 启动 miniQMT 并登录 | `pip install xqshare pyyaml`
+
+**客户端（macOS/Linux）：** Python 环境 | `pip install xqshare`
+
+### 服务器 Windows 快速启动
+
+```powershell
+python -m xqshare.server
 ```
 
-**启动命令：**
+### 客户端快速测试
+
 ```bash
-python -m xqshare.server                    # 基础启动
-python -m xqshare.server --port 18813       # 自定义端口
-python -m xqshare.server --log-level DEBUG  # 调整日志级别
-```
-
-### 2. macOS/Linux 客户端
-
-**环境变量：**
-```bash
-export XTQUANT_REMOTE_HOST="192.168.1.100"     # 服务端地址
-export XTQUANT_REMOTE_PORT="18812"             # 服务端端口
-export XTQUANT_CLIENT_SECRET="your-secret"     # 认证密钥
-# export XTQUANT_CLIENT_ID="my-app"            # 客户端标识
-```
-
-**使用示例：**
-```python
-from xqshare import XtQuantRemote
-
-# 方式1：使用环境变量（推荐）
-xt = XtQuantRemote()
-
-# 方式2：显式参数
-xt = XtQuantRemote("192.168.1.100", client_secret="xxx")
-
-# 使用方式与本地 xtquant 完全一致
-stocks = xt.xtdata.get_stock_list_in_sector("沪深A股")
-df = xt.xtdata.get_market_data(["000001.SZ"], period="1d")
-ticks = xt.xtdata.get_full_tick(["000001.SZ"])
-xt.close()
-```
-
-**交易功能（可选）：**
-```bash
-export XTQUANT_ACCOUNT_ID="12345678"
-export XTQUANT_USERDATA_PATH="C:\\QMT\\userdata_mini"
+export XTQUANT_REMOTE_HOST="192.168.1.100"
+xtdata get_stock_list_in_sector --sector-name "沪深A股" --limit 10
 ```
 
 ---
