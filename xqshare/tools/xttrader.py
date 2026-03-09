@@ -25,7 +25,8 @@ import os
 import argparse
 from .common import (
     create_client, parse_kv_args, preprocess_params,
-    format_output, add_global_args, add_trader_args, create_trader, ENV_FORMAT
+    format_output, add_global_args, add_trader_args, create_trader,
+    extract_global_args, ENV_FORMAT
 )
 
 
@@ -64,6 +65,20 @@ def main():
 
     # 补充环境变量默认值
     output_format = args.output_format or os.environ.get(ENV_FORMAT, "text")
+
+    # 提取后置的全局参数（支持放在 command 之后）
+    args.args, global_overrides = extract_global_args(args.args)
+    if global_overrides:
+        if 'compact' in global_overrides:
+            args.compact = True
+        if 'verbose' in global_overrides or 'v' in global_overrides:
+            args.verbose = True
+        if 'output' in global_overrides or 'o' in global_overrides:
+            args.output = global_overrides.get('output') or global_overrides.get('o')
+        if 'limit' in global_overrides or 'n' in global_overrides:
+            args.limit = int(global_overrides.get('limit') or global_overrides.get('n', 0))
+        if 'format' in global_overrides or 'f' in global_overrides:
+            output_format = global_overrides.get('format') or global_overrides.get('f')
 
     # 拒绝订阅相关命令
     if args.command.startswith('subscribe') or args.command.startswith('register'):

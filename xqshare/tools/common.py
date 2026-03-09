@@ -44,19 +44,76 @@ def create_client(host=None, port=None, secret=None, client_id=None, quiet=True)
         xt.close()
 
 
+# 已知的全局参数（不应传递给 API）
+GLOBAL_ARGS = {
+    'host', 'port', 'secret', 'client_id',
+    'limit', 'n', 'verbose', 'v',
+    'output', 'o', 'format', 'f', 'compact',
+    'userdata_path', 'account_id', 'account_type',
+}
+
+# 带值的全局参数（需要提取值）
+GLOBAL_ARGS_WITH_VALUE = {
+    'host', 'port', 'secret', 'client_id',
+    'limit', 'output', 'o', 'format', 'f',
+    'userdata_path', 'account_id', 'account_type',
+}
+
+# 标志型全局参数（无值，布尔类型）
+GLOBAL_ARGS_FLAG = {
+    'verbose', 'v', 'compact',
+}
+
+
+def extract_global_args(args_list):
+    """从参数列表中提取后置的全局参数
+
+    支持用户将全局参数放在 command 之后，例如：
+        xtdata get_stock_list --sector-name "沪深A股" --compact --limit 10
+
+    Args:
+        args_list: 原始参数列表
+
+    Returns:
+        tuple: (过滤后的参数列表, 提取到的全局参数字典)
+    """
+    extracted = {}
+    filtered = []
+    i = 0
+
+    while i < len(args_list):
+        arg = args_list[i]
+        if arg.startswith('--'):
+            key = arg[2:].replace('-', '_')
+
+            if key in GLOBAL_ARGS:
+                if key in GLOBAL_ARGS_WITH_VALUE:
+                    # 带值的参数
+                    if i + 1 < len(args_list) and not args_list[i + 1].startswith('--'):
+                        extracted[key] = args_list[i + 1]
+                        i += 2
+                    else:
+                        extracted[key] = True
+                        i += 1
+                elif key in GLOBAL_ARGS_FLAG:
+                    # 标志型参数
+                    extracted[key] = True
+                    i += 1
+                else:
+                    i += 1
+                continue
+
+        filtered.append(arg)
+        i += 1
+
+    return filtered, extracted
+
+
 def parse_kv_args(args_list):
     """解析 --key value 格式的参数
 
     自动过滤已知的全局 CLI 参数，防止它们被误传给 API 函数。
     """
-    # 已知的全局参数（不应传递给 API）
-    GLOBAL_ARGS = {
-        'host', 'port', 'secret', 'client_id',
-        'limit', 'n', 'verbose', 'v',
-        'output', 'o', 'format', 'f', 'compact',
-        'userdata_path', 'account_id', 'account_type',
-    }
-
     params = {}
     i = 0
     while i < len(args_list):
