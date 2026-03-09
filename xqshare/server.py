@@ -27,9 +27,9 @@ try:
     import xtquant.xttrader as xttrader
     import xtquant.xttype as xttype
     from xtquant.xttrader import XtQuantTrader
-    XTQUANT_AVAILABLE = True
+    XQSHARE_AVAILABLE = True
 except ImportError:
-    XTQUANT_AVAILABLE = False
+    XQSHARE_AVAILABLE = False
     xtdata = None
     xttrader = None
     xttype = None
@@ -41,7 +41,7 @@ except ImportError:
 def setup_logging(log_dir: str = None, log_level: str = "INFO"):
     """配置日志系统"""
     if log_dir is None:
-        log_dir = os.environ.get("XTQUANT_LOG_DIR", "logs")
+        log_dir = os.environ.get("XQSHARE_LOG_DIR", "logs")
     os.makedirs(log_dir, exist_ok=True)
     
     formatter = logging.Formatter(
@@ -343,7 +343,7 @@ class XtQuantService(rpyc.Service):
             if error:
                 logger.warning(f"[权限拒绝] create_trader | client={self._client_info} | {error}")
                 raise error
-        if not XTQUANT_AVAILABLE:
+        if not XQSHARE_AVAILABLE:
             raise RuntimeError("xtquant 库未安装")
         return XtQuantTrader()
 
@@ -456,9 +456,9 @@ def create_ssl_context(certfile=None, keyfile=None):
 def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfile=None, log_level="INFO"):
     """启动服务"""
     if port is None:
-        port = int(os.environ.get("XTQUANT_PORT", "18812"))
+        port = int(os.environ.get("XQSHARE_PORT", "18812"))
     
-    if not XTQUANT_AVAILABLE:
+    if not XQSHARE_AVAILABLE:
         print("错误: xtquant 库未安装，请先安装 xtquant")
         return
     
@@ -545,7 +545,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="XtQuant Share (xqshare) 服务")
     parser.add_argument("--host", default="0.0.0.0", help="监听地址")
-    parser.add_argument("--port", type=int, default=None, help="监听端口 (默认: 18812 或 XTQUANT_PORT)")
+    parser.add_argument("--port", type=int, default=None, help="监听端口 (默认: 18812 或 XQSHARE_PORT)")
     parser.add_argument("--ssl", action="store_true", help="启用 SSL 加密")
     parser.add_argument("--cert", help="SSL 证书文件")
     parser.add_argument("--key", help="SSL 私钥文件")

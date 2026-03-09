@@ -243,7 +243,7 @@ clients:
             checker = PermissionChecker(f.name)
 
             # 环境变量中的客户端不在配置文件中，使用默认密钥
-            with patch.dict(os.environ, {"XTQUANT_CLIENT_SECRET": "env-default-secret"}):
+            with patch.dict(os.environ, {"XQSHARE_CLIENT_SECRET": "env-default-secret"}):
                 valid, level = checker.verify_secret("env-user", "env-default-secret")
                 assert valid is True
                 assert level == AccountLevel.FREE

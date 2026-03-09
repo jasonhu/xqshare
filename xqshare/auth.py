@@ -247,7 +247,7 @@ class PermissionChecker:
             return self._clients[client_id]
 
         # 尝试从环境变量获取
-        secret = os.environ.get(f"XTQUANT_CLIENT_{client_id}")
+        secret = os.environ.get(f"XQSHARE_CLIENT_{client_id}")
         if secret:
             return ClientConfig(secret=secret, level=AccountLevel.FREE)
 
@@ -272,7 +272,7 @@ class PermissionChecker:
                 # 使用默认客户端模式，拒绝未知客户端
                 return False, None
             # 非默认模式，尝试使用环境变量中的默认密钥
-            default_secret = os.environ.get("XTQUANT_CLIENT_SECRET", "default-secret")
+            default_secret = os.environ.get("XQSHARE_CLIENT_SECRET", "default-secret")
             if client_secret == default_secret:
                 return True, AccountLevel.FREE
             return False, None

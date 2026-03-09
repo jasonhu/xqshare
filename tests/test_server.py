@@ -215,7 +215,7 @@ class TestSSLContext:
 class TestAuthService:
     """测试认证服务"""
     
-    @patch.dict(os.environ, {"XTQUANT_CLIENT_SECRET": "test-secret"})
+    @patch.dict(os.environ, {"XQSHARE_CLIENT_SECRET": "test-secret"})
     def test_authenticate_success(self):
         service = XtQuantService()
         service._conn = Mock()
@@ -226,7 +226,7 @@ class TestAuthService:
         assert token is not None
         assert service._authenticated is True
     
-    @patch.dict(os.environ, {"XTQUANT_CLIENT_SECRET": "test-secret"})
+    @patch.dict(os.environ, {"XQSHARE_CLIENT_SECRET": "test-secret"})
     def test_authenticate_failure(self):
         service = XtQuantService()
         service._conn = Mock()
@@ -236,8 +236,8 @@ class TestAuthService:
             service.exposed_authenticate("test_client", "wrong-secret")
     
     @patch.dict(os.environ, {
-        "XTQUANT_CLIENT_app1": "secret-app1",
-        "XTQUANT_CLIENT_app2": "secret-app2"
+        "XQSHARE_CLIENT_app1": "secret-app1",
+        "XQSHARE_CLIENT_app2": "secret-app2"
     })
     def test_multi_client_auth(self):
         service = XtQuantService()

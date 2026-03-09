@@ -12,8 +12,8 @@ import rpyc
 
 def main():
     parser = argparse.ArgumentParser(description="测试 RPyC 异步回调")
-    parser.add_argument("--host", help="服务端地址 (默认: 环境变量 XTQUANT_REMOTE_HOST 或 localhost)")
-    parser.add_argument("--port", type=int, help="服务端端口 (默认: 环境变量 XTQUANT_REMOTE_PORT 或 18812)")
+    parser.add_argument("--host", help="服务端地址 (默认: 环境变量 XQSHARE_REMOTE_HOST 或 localhost)")
+    parser.add_argument("--port", type=int, help="服务端端口 (默认: 环境变量 XQSHARE_REMOTE_PORT 或 18812)")
     parser.add_argument("--delay", type=float, default=2.0, help="回调间隔秒数")
     parser.add_argument("--count", type=int, default=5, help="回调次数")
 

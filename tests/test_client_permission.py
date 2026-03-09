@@ -42,10 +42,10 @@ class TestClientAuthResponse:
         with patch('xqshare.client.rpyc.connect', return_value=mock_conn):
             with patch('xqshare.client.BgServingThread'):
                 with patch.dict(os.environ, {
-                    "XTQUANT_REMOTE_HOST": "localhost",
-                    "XTQUANT_REMOTE_PORT": "18812",
-                    "XTQUANT_CLIENT_ID": "test-client",
-                    "XTQUANT_CLIENT_SECRET": "test-secret"
+                    "XQSHARE_REMOTE_HOST": "localhost",
+                    "XQSHARE_REMOTE_PORT": "18812",
+                    "XQSHARE_CLIENT_ID": "test-client",
+                    "XQSHARE_CLIENT_SECRET": "test-secret"
                 }):
                     client = XtQuantRemote(
                         host="localhost",
@@ -184,10 +184,10 @@ class TestClientEnvConfig:
         with patch('xqshare.client.rpyc.connect', return_value=mock_conn):
             with patch('xqshare.client.BgServingThread'):
                 with patch.dict(os.environ, {
-                    "XTQUANT_REMOTE_HOST": "192.168.1.100",
-                    "XTQUANT_REMOTE_PORT": "18888",
-                    "XTQUANT_CLIENT_ID": "env-client",
-                    "XTQUANT_CLIENT_SECRET": "env-secret"
+                    "XQSHARE_REMOTE_HOST": "192.168.1.100",
+                    "XQSHARE_REMOTE_PORT": "18888",
+                    "XQSHARE_CLIENT_ID": "env-client",
+                    "XQSHARE_CLIENT_SECRET": "env-secret"
                 }):
                     client = XtQuantRemote(heartbeat_interval=0)
 

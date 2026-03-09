@@ -26,7 +26,7 @@ def setup_logging(log_level: str = "INFO", quiet: bool = False):
         quiet: 是否静默模式（不输出控制台日志）
     """
     # 日志目录：优先使用环境变量，默认为工作目录的 logs
-    log_dir = os.environ.get("XTQUANT_LOG_DIR", "logs")
+    log_dir = os.environ.get("XQSHARE_LOG_DIR", "logs")
     os.makedirs(log_dir, exist_ok=True)
 
     formatter = logging.Formatter(
@@ -252,13 +252,13 @@ class XtQuantRemote:
     ):
         # 支持环境变量：显式参数 > 环境变量 > 默认值
         if host is None:
-            host = os.environ.get("XTQUANT_REMOTE_HOST", "localhost")
+            host = os.environ.get("XQSHARE_REMOTE_HOST", "localhost")
         if port is None:
-            port = int(os.environ.get("XTQUANT_REMOTE_PORT", "18812"))
+            port = int(os.environ.get("XQSHARE_REMOTE_PORT", "18812"))
         if client_id is None:
-            client_id = os.environ.get("XTQUANT_CLIENT_ID", DEFAULT_CLIENT_ID)
+            client_id = os.environ.get("XQSHARE_CLIENT_ID", DEFAULT_CLIENT_ID)
         if client_secret is None:
-            client_secret = os.environ.get("XTQUANT_CLIENT_SECRET", DEFAULT_CLIENT_SECRET)
+            client_secret = os.environ.get("XQSHARE_CLIENT_SECRET", DEFAULT_CLIENT_SECRET)
 
         self._host = host
         self._port = port
@@ -519,18 +519,18 @@ def connect(host=None, port=None, **kwargs):
     """创建全局连接
 
     支持环境变量配置：
-    - XTQUANT_REMOTE_HOST: 服务端地址
-    - XTQUANT_REMOTE_PORT: 服务端端口
-    - XTQUANT_CLIENT_ID: 客户端标识
-    - XTQUANT_CLIENT_SECRET: 客户端密钥
+    - XQSHARE_REMOTE_HOST: 服务端地址
+    - XQSHARE_REMOTE_PORT: 服务端端口
+    - XQSHARE_CLIENT_ID: 客户端标识
+    - XQSHARE_CLIENT_SECRET: 客户端密钥
 
     优先级：显式参数 > 环境变量 > 默认值
     """
     global _global_client
     if host is None:
-        host = os.environ.get("XTQUANT_REMOTE_HOST", "localhost")
+        host = os.environ.get("XQSHARE_REMOTE_HOST", "localhost")
     if port is None:
-        port = int(os.environ.get("XTQUANT_REMOTE_PORT", "18812"))
+        port = int(os.environ.get("XQSHARE_REMOTE_PORT", "18812"))
     _global_client = XtQuantRemote(host, port, **kwargs)
     return _global_client
 

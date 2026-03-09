@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xqshare"
-version = "1.0.1"
+version = "1.0.2"
 description = "Xtreme Quant Share - eXtreme transparent sharing proxy for XtQuant on macOS/Linux"
 readme = "README.md"
 license = "GPL-3.0-only"
