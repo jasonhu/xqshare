@@ -2,7 +2,7 @@
 """
 查询账户持仓示例
 
-展示如何通过 xqshare 查询交易账户的持仓信息。
+展示如何通过 xqshare 查询交易账户的持仓、委托、成交信息。
 
 注意:
   - 需要先在 Windows 上安装并运行 QMT 交易客户端
@@ -44,6 +44,12 @@ ACCOUNT_TYPES = {
     "SHENGANGTONG": "深港通",
 }
 
+# 委托类型映射
+ORDER_TYPES = {
+    23: "买入",
+    24: "卖出",
+}
+
 
 def print_asset_info(asset):
     """输出账户资产信息"""
@@ -68,13 +74,17 @@ def print_asset_info(asset):
 
 def print_positions_table(positions):
     """以表格方式输出持仓"""
+    print()
+    print("=" * 108)
+    print(f"{'持仓记录':^106}")
+    print("-" * 108)
+
     if not positions:
-        print("\n当前账户无持仓")
+        print(f"{'无持仓数据':^106}")
+        print("=" * 108)
         return
 
     # 表头
-    print()
-    print("=" * 108)
     print(f"{'序号':^4} | {'股票代码':^10} | {'名称':^6} | {'持仓':>8} | {'可用':>8} | {'成本':>8} | {'现价':>8} | {'市值':>12} | {'盈亏':>10} | {'盈亏%':>7}")
     print("-" * 108)
 
@@ -98,7 +108,7 @@ def print_positions_table(positions):
         stock_name_display = stock_name[:4].ljust(4) if len(stock_name) >= 4 else stock_name.ljust(4)
 
         # 盈亏符号
-        profit_sign = "+" if profit >= 0 else ""
+        profit_sign = "+" if profit >= 0 else "-"
         rate_str = f"+{profit_rate*100:.1f}%" if profit_rate >= 0 else f"{profit_rate*100:.1f}%"
 
         print(f"{i:^4} | {stock_code:^10} | {stock_name_display:4} | {volume:>8,} | {can_use:>8,} | {avg_price:>8.3f} | {last_price:>8.3f} | {market_value:>12,.0f} | {profit_sign}{abs(profit):>9,.0f} | {rate_str:>8}")
@@ -115,9 +125,83 @@ def print_positions_table(positions):
     print(f"\n持仓: {len(positions)} 只 | 市值: {total_market_value:,.0f} 元 | 盈亏: {profit_sign}{abs(total_profit):,.0f} 元")
 
 
+def print_orders_table(orders):
+    """以表格方式输出委托单"""
+    print()
+    print("=" * 130)
+    print(f"{'委托记录':^128}")
+    print("-" * 130)
+
+    if not orders:
+        print(f"{'无委托数据':^128}")
+        print("=" * 130)
+        return
+
+    # 表头
+    print(f"{'序号':^4} | {'委托编号':^12} | {'股票代码':^10} | {'方向':^4} | {'委托价':>8} | {'委托量':>8} | {'成交价':>8} | {'成交量':>8} | {'状态':^16} | {'委托时间':^12}")
+    print("-" * 130)
+
+    for i, order in enumerate(orders, 1):
+        order_id = getattr(order, 'order_id', 'N/A')
+        stock_code = getattr(order, 'stock_code', 'N/A')
+        order_type = getattr(order, 'order_type', 0)
+        price = getattr(order, 'price', 0) or 0
+        order_volume = getattr(order, 'order_volume', 0) or 0
+        traded_price = getattr(order, 'traded_price', 0) or 0
+        traded_volume = getattr(order, 'traded_volume', 0) or 0
+        status_msg = getattr(order, 'status_msg', '') or str(getattr(order, 'order_status', '?'))
+        order_time = getattr(order, 'order_time', '')
+
+        direction = ORDER_TYPES.get(order_type, f"类型{order_type}")
+        status_display = status_msg[:14] if len(status_msg) > 14 else status_msg
+
+        print(f"{i:^4} | {str(order_id):^12} | {stock_code:^10} | {direction:^4} | {price:>8.3f} | {order_volume:>8,} | {traded_price:>8.3f} | {traded_volume:>8,} | {status_display:^16} | {order_time:^12}")
+
+    print("=" * 130)
+    print(f"委托: {len(orders)} 笔")
+
+
+def print_trades_table(trades):
+    """以表格方式输出成交单"""
+    print()
+    print("=" * 110)
+    print(f"{'成交记录':^108}")
+    print("-" * 110)
+
+    if not trades:
+        print(f"{'无成交数据':^108}")
+        print("=" * 110)
+        return
+
+    # 表头
+    print(f"{'序号':^4} | {'成交编号':^12} | {'股票代码':^10} | {'方向':^4} | {'成交价':>8} | {'成交量':>8} | {'成交金额':>12} | {'成交时间':^14}")
+    print("-" * 110)
+
+    total_amount = 0.0
+
+    for i, trade in enumerate(trades, 1):
+        traded_id = getattr(trade, 'traded_id', 'N/A')
+        stock_code = getattr(trade, 'stock_code', 'N/A')
+        order_type = getattr(trade, 'order_type', 0)
+        traded_price = getattr(trade, 'traded_price', 0) or 0
+        traded_volume = getattr(trade, 'traded_volume', 0) or 0
+        traded_amount = getattr(trade, 'traded_amount', 0) or 0
+        traded_time = getattr(trade, 'traded_time', '')
+
+        direction = ORDER_TYPES.get(order_type, f"类型{order_type}")
+        total_amount += traded_amount
+
+        print(f"{i:^4} | {str(traded_id):^12} | {stock_code:^10} | {direction:^4} | {traded_price:>8.3f} | {traded_volume:>8,} | {traded_amount:>12,.2f} | {traded_time:^14}")
+
+    print("-" * 110)
+    print(f"{'合计':^4} | {'':^12} | {'':^10} | {'':^4} | {'':>8} | {'':>8} | {total_amount:>12,.2f} |")
+    print("=" * 110)
+    print(f"成交: {len(trades)} 笔 | 总金额: {total_amount:,.2f} 元")
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="查询账户持仓信息",
+        description="查询账户持仓、委托、成交信息",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 账户类型 (account-type):
@@ -208,11 +292,23 @@ def main():
         # 查询持仓
         positions = trader.query_stock_positions(account)
 
+        # 查询委托
+        orders = trader.query_stock_orders(account)
+
+        # 查询成交
+        trades = trader.query_stock_trades(account)
+
         # 输出资产信息
         print_asset_info(asset)
 
         # 以表格方式输出持仓
         print_positions_table(positions)
+
+        # 以表格方式输出委托
+        print_orders_table(orders)
+
+        # 以表格方式输出成交
+        print_trades_table(trades)
 
     except Exception as e:
         error_msg = str(e)
