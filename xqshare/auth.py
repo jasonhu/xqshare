@@ -18,7 +18,8 @@ class Permission(Enum):
     DAILY = "daily"        # 日线数据
     MINUTE = "minute"      # 分钟线数据
     TICK = "tick"          # 实时行情
-    TRADE = "trade"        # 交易功能
+    TRADE_QUERY = "trade_query"  # 交易查询权限（持仓、资产、委托等）
+    TRADE_ORDER = "trade_order"  # 完整交易权限（查询+下单+撤单）
     CALLBACK = "callback"  # 回调功能
 
 
@@ -36,8 +37,8 @@ LEVEL_PERMISSIONS: Dict[AccountLevel, Set[Permission]] = {
     AccountLevel.FREE: {Permission.BASIC, Permission.DAILY},
     AccountLevel.PLUS: {Permission.BASIC, Permission.DAILY, Permission.MINUTE},
     AccountLevel.STANDARD: {Permission.BASIC, Permission.DAILY, Permission.MINUTE, Permission.TICK, Permission.CALLBACK},
-    AccountLevel.PREMIUM: {Permission.BASIC, Permission.DAILY, Permission.MINUTE, Permission.TICK, Permission.TRADE, Permission.CALLBACK},
-    AccountLevel.ENTERPRISE: {Permission.BASIC, Permission.DAILY, Permission.MINUTE, Permission.TICK, Permission.TRADE, Permission.CALLBACK},
+    AccountLevel.PREMIUM: {Permission.BASIC, Permission.DAILY, Permission.MINUTE, Permission.TICK, Permission.TRADE_QUERY, Permission.CALLBACK},
+    AccountLevel.ENTERPRISE: {Permission.BASIC, Permission.DAILY, Permission.MINUTE, Permission.TICK, Permission.TRADE_QUERY, Permission.TRADE_ORDER, Permission.CALLBACK},
 }
 
 # API 与权限的映射关系
@@ -72,7 +73,41 @@ API_PERMISSIONS: Dict[str, Permission] = {
     "xtdata.subscribe_quote": Permission.TICK,
 
     # ==================== trade 权限 ====================
-    "create_trader": Permission.TRADE,
+    # 精确匹配：查询方法需要 TRADE_QUERY
+    "create_trader": Permission.TRADE_QUERY,
+    "create_xttrader": Permission.TRADE_QUERY,
+    "xttrader.register_callback": Permission.TRADE_QUERY,
+    "xttrader.subscribe": Permission.TRADE_QUERY,
+    "xttrader.unsubscribe": Permission.TRADE_QUERY,
+    "xttrader.query_account_infos": Permission.TRADE_QUERY,
+    "xttrader.query_account_status": Permission.TRADE_QUERY,
+    "xttrader.query_stock_asset": Permission.TRADE_QUERY,
+    "xttrader.query_stock_order": Permission.TRADE_QUERY,
+    "xttrader.query_stock_orders": Permission.TRADE_QUERY,
+    "xttrader.query_stock_trades": Permission.TRADE_QUERY,
+    "xttrader.query_stock_position": Permission.TRADE_QUERY,
+    "xttrader.query_stock_positions": Permission.TRADE_QUERY,
+    "xttrader.query_credit_detail": Permission.TRADE_QUERY,
+    "xttrader.query_stk_compacts": Permission.TRADE_QUERY,
+    "xttrader.query_credit_subjects": Permission.TRADE_QUERY,
+    "xttrader.query_credit_slo_code": Permission.TRADE_QUERY,
+    "xttrader.query_credit_assure": Permission.TRADE_QUERY,
+    "xttrader.query_new_purchase_limit": Permission.TRADE_QUERY,
+    # 异步查询方法（带回调）
+    "xttrader.query_account_infos_async": Permission.TRADE_QUERY,
+    "xttrader.query_account_status_async": Permission.TRADE_QUERY,
+    "xttrader.query_stock_asset_async": Permission.TRADE_QUERY,
+    "xttrader.query_stock_orders_async": Permission.TRADE_QUERY,
+    "xttrader.query_stock_trades_async": Permission.TRADE_QUERY,
+    "xttrader.query_stock_positions_async": Permission.TRADE_QUERY,
+    "xttrader.query_credit_detail_async": Permission.TRADE_QUERY,
+    "xttrader.query_stk_compacts_async": Permission.TRADE_QUERY,
+    "xttrader.query_credit_subjects_async": Permission.TRADE_QUERY,
+    "xttrader.query_credit_slo_code_async": Permission.TRADE_QUERY,
+    "xttrader.query_credit_assure_async": Permission.TRADE_QUERY,
+    "xttrader.query_new_purchase_limit_async": Permission.TRADE_QUERY,
+    # 通配符：其他 xttrader 方法（下单/撤单等）需要 TRADE_ORDER
+    "xttrader.*": Permission.TRADE_ORDER,
 
     # ==================== callback 权限 ====================
     # 订阅类 API（包含 callback 参数）
@@ -344,7 +379,7 @@ class PermissionChecker:
         对于 get_market_data 和 get_market_data_ex，
         根据 period 参数动态判断权限
         """
-        # 直接查找
+        # 1. 精确匹配
         if method in API_PERMISSIONS:
             permission = API_PERMISSIONS[method]
 
@@ -363,6 +398,14 @@ class PermissionChecker:
                 # 其他周期默认为日线权限
 
             return permission
+
+        # 2. 通配符匹配（支持 "module.*" 格式）
+        for pattern, permission in API_PERMISSIONS.items():
+            if "*" in pattern:
+                # 将通配符模式转换为前缀匹配
+                prefix = pattern.rstrip("*")
+                if method.startswith(prefix):
+                    return permission
 
         return None
 
