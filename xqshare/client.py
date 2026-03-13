@@ -517,7 +517,7 @@ class XtQuantRemote:
     def xtconstant(self):
         return self._xtconstant
 
-    def create_xttrader(self, userdata_path: str = None, session_id: int = None):
+    def create_trader(self, userdata_path: str = None, session_id: int = None):
         """
         创建并启动交易实例
 

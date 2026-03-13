@@ -565,10 +565,6 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
     _init_logging(log_level)
     XtQuantService._start_time = time.time()
 
-    # 预加载权限检查器（加载 clients.yaml 配置）
-    if XtQuantService._permission_checker is None:
-        XtQuantService._permission_checker = get_permission_checker()
-
     print("=" * 70)
     print("  XtQuant Share (xqshare) 服务")
     print("=" * 70)
@@ -577,6 +573,10 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
     print(f"  日志级别: {log_level}")
     print("=" * 70)
     
+    # 预加载权限检查器（加载 clients.yaml 配置）
+    if XtQuantService._permission_checker is None:
+        XtQuantService._permission_checker = get_permission_checker()
+
     logger.info(f"服务启动 | host={host} | port={port} | ssl={use_ssl}")
     
     config = {
