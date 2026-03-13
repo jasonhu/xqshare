@@ -349,9 +349,10 @@ class XtQuantService(rpyc.Service):
         threading.Timer(delay, _close).start()
 
     def _require_auth(self):
-        """检查认证状态，未认证则抛出异常"""
+        """检查认证状态，未认证则抛出异常并断开连接"""
         if not self._authenticated:
             logger.warning(f"[未授权] 未认证的访问尝试: {self._client_info}")
+            self._delayed_disconnect()
             raise AuthError("未授权访问，请先认证")
 
     # ==================== 认证接口 ====================
