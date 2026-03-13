@@ -316,9 +316,7 @@ class XtQuantService(rpyc.Service):
         self._authenticated = False
         self._client_id = None
         self._account_level = AccountLevel.FREE  # 默认为免费等级
-        # 初始化权限检查器（延迟初始化）
-        if XtQuantService._permission_checker is None:
-            XtQuantService._permission_checker = get_permission_checker()
+        # 权限检查器在服务启动时已加载
         # 兼容不同版本 rpyc：尝试获取客户端地址
         try:
             if hasattr(conn, 'peer'):
@@ -559,14 +557,18 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
     """启动服务"""
     if port is None:
         port = int(os.environ.get("XQSHARE_PORT", "18812"))
-    
+
     if not XTQUANT_AVAILABLE:
         print("错误: xtquant 库未安装，请先安装 xtquant")
         return
-    
+
     _init_logging(log_level)
     XtQuantService._start_time = time.time()
-    
+
+    # 预加载权限检查器（加载 clients.yaml 配置）
+    if XtQuantService._permission_checker is None:
+        XtQuantService._permission_checker = get_permission_checker()
+
     print("=" * 70)
     print("  XtQuant Share (xqshare) 服务")
     print("=" * 70)
