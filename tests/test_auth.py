@@ -32,7 +32,8 @@ class TestPermissionEnums:
         assert Permission.DAILY.value == "daily"
         assert Permission.MINUTE.value == "minute"
         assert Permission.TICK.value == "tick"
-        assert Permission.TRADE.value == "trade"
+        assert Permission.TRADE_QUERY.value == "trade_query"
+        assert Permission.TRADE_ORDER.value == "trade_order"
         assert Permission.CALLBACK.value == "callback"
 
     def test_account_level_values(self):
@@ -54,7 +55,8 @@ class TestLevelPermissions:
         assert Permission.DAILY in perms
         assert Permission.MINUTE not in perms
         assert Permission.TICK not in perms
-        assert Permission.TRADE not in perms
+        assert Permission.TRADE_QUERY not in perms
+        assert Permission.TRADE_ORDER not in perms
         assert Permission.CALLBACK not in perms
 
     def test_plus_permissions(self):
@@ -64,7 +66,8 @@ class TestLevelPermissions:
         assert Permission.DAILY in perms
         assert Permission.MINUTE in perms
         assert Permission.TICK not in perms
-        assert Permission.TRADE not in perms
+        assert Permission.TRADE_QUERY not in perms
+        assert Permission.TRADE_ORDER not in perms
         assert Permission.CALLBACK not in perms
 
     def test_standard_permissions(self):
@@ -75,7 +78,8 @@ class TestLevelPermissions:
         assert Permission.MINUTE in perms
         assert Permission.TICK in perms
         assert Permission.CALLBACK in perms
-        assert Permission.TRADE not in perms
+        assert Permission.TRADE_QUERY not in perms
+        assert Permission.TRADE_ORDER not in perms
 
     def test_premium_permissions(self):
         """测试高级用户权限"""
@@ -85,7 +89,8 @@ class TestLevelPermissions:
         assert Permission.MINUTE in perms
         assert Permission.TICK in perms
         assert Permission.CALLBACK in perms
-        assert Permission.TRADE in perms
+        assert Permission.TRADE_QUERY in perms
+        assert Permission.TRADE_ORDER not in perms
 
     def test_enterprise_permissions(self):
         """测试企业用户权限"""
@@ -95,7 +100,8 @@ class TestLevelPermissions:
         assert Permission.MINUTE in perms
         assert Permission.TICK in perms
         assert Permission.CALLBACK in perms
-        assert Permission.TRADE in perms
+        assert Permission.TRADE_QUERY in perms
+        assert Permission.TRADE_ORDER in perms
 
 
 class TestPeriodSets:
@@ -277,7 +283,8 @@ clients:
         assert checker.has_permission(AccountLevel.FREE, Permission.DAILY) is True
         assert checker.has_permission(AccountLevel.FREE, Permission.MINUTE) is False
         assert checker.has_permission(AccountLevel.FREE, Permission.TICK) is False
-        assert checker.has_permission(AccountLevel.FREE, Permission.TRADE) is False
+        assert checker.has_permission(AccountLevel.FREE, Permission.TRADE_QUERY) is False
+        assert checker.has_permission(AccountLevel.FREE, Permission.TRADE_ORDER) is False
 
         # PLUS 用户
         assert checker.has_permission(AccountLevel.PLUS, Permission.MINUTE) is True
@@ -285,10 +292,15 @@ clients:
 
         # STANDARD 用户
         assert checker.has_permission(AccountLevel.STANDARD, Permission.TICK) is True
-        assert checker.has_permission(AccountLevel.STANDARD, Permission.TRADE) is False
+        assert checker.has_permission(AccountLevel.STANDARD, Permission.TRADE_QUERY) is False
 
         # PREMIUM 用户
-        assert checker.has_permission(AccountLevel.PREMIUM, Permission.TRADE) is True
+        assert checker.has_permission(AccountLevel.PREMIUM, Permission.TRADE_QUERY) is True
+        assert checker.has_permission(AccountLevel.PREMIUM, Permission.TRADE_ORDER) is False
+
+        # ENTERPRISE 用户
+        assert checker.has_permission(AccountLevel.ENTERPRISE, Permission.TRADE_QUERY) is True
+        assert checker.has_permission(AccountLevel.ENTERPRISE, Permission.TRADE_ORDER) is True
 
 
 class TestAPIDynamicPermission:
@@ -436,18 +448,33 @@ class TestAPIDynamicPermission:
         )
         assert error is None
 
-    def test_trade_permission(self):
-        """测试交易权限"""
-        # STANDARD 用户不能交易
+    def test_trade_query_permission(self):
+        """测试交易查询权限"""
+        # STANDARD 用户不能交易查询
         error = self.checker.check_api_permission(
-            AccountLevel.STANDARD, "get_xttrader"
+            AccountLevel.STANDARD, "create_trader"
         )
         assert error is not None
-        assert error.permission == Permission.TRADE
+        assert error.permission == Permission.TRADE_QUERY
 
         # PREMIUM 用户可以
         error = self.checker.check_api_permission(
-            AccountLevel.PREMIUM, "get_xttrader"
+            AccountLevel.PREMIUM, "create_trader"
+        )
+        assert error is None
+
+    def test_trade_order_permission(self):
+        """测试交易下单权限"""
+        # PREMIUM 用户不能下单
+        error = self.checker.check_api_permission(
+            AccountLevel.PREMIUM, "xttrader.order_stock"
+        )
+        assert error is not None
+        assert error.permission == Permission.TRADE_ORDER
+
+        # ENTERPRISE 用户可以
+        error = self.checker.check_api_permission(
+            AccountLevel.ENTERPRISE, "xttrader.order_stock"
         )
         assert error is None
 

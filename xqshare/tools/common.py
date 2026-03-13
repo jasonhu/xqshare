@@ -421,8 +421,6 @@ def create_trader(xt, userdata_path, account_id, account_type):
     Returns:
         (trader, account) 元组
     """
-    import time
-
     # 从环境变量获取默认值
     if not userdata_path:
         import os
@@ -436,9 +434,10 @@ def create_trader(xt, userdata_path, account_id, account_type):
     if not account_id:
         raise ValueError("必须提供 account_id 参数或设置 QMT_ACCOUNT_ID 环境变量")
 
-    # 创建交易实例
-    session_id = int(time.time())
-    trader = xt.xttrader.XtQuantTrader(userdata_path, session_id)
+    # 创建交易实例（使用服务端方法）
+    trader = xt.create_trader(userdata_path)
+
+    # 启动交易线程
     trader.start()
 
     # 创建账户对象

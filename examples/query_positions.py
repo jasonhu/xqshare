@@ -173,12 +173,10 @@ def main():
     )
 
     try:
-        # 创建交易实例（使用时间戳生成唯一 session_id）
-        session_id = int(time.time())
+        # 创建交易实例
         print(f"正在创建交易实例...")
         print(f"  路径: {userdata_path}")
-        print(f"  会话ID: {session_id}")
-        trader = xt.xttrader.XtQuantTrader(userdata_path, session_id)
+        trader = xt.create_trader(userdata_path)
 
         # 启动交易线程
         print(f"正在启动交易线程...")

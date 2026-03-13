@@ -405,14 +405,14 @@ class XtQuantService(rpyc.Service):
     @log_api_call("create_trader")
     def exposed_create_trader(self, userdata_path: str = None, session_id: int = None):
         """
-        创建并启动交易实例
+        创建交易实例（不自动启动，由客户端控制生命周期）
 
         Args:
             userdata_path: QMT 客户端 userdata_mini 目录路径（可选，可通过环境变量配置）
             session_id: 会话ID（可选，默认自动生成时间戳）
 
         Returns:
-            已启动的 XtQuantTrader 实例
+            XtQuantTrader 实例（需客户端调用 start() 和 connect()）
         """
         self._require_auth()
         # 检查 trade 权限
@@ -436,9 +436,8 @@ class XtQuantService(rpyc.Service):
         if session_id is None:
             session_id = int(time.time())
 
-        # 创建并启动 trader
+        # 创建 trader（不自动启动，由客户端控制生命周期）
         trader = XtQuantTrader(userdata_path, session_id)
-        trader.start()
 
         logger.info(f"[创建Trader] userdata_path={userdata_path} | session_id={session_id}")
 

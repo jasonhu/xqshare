@@ -285,26 +285,6 @@ class TestServiceTradePermission:
         reset_permission_checker()
         XtQuantService._permission_checker = None
 
-    def test_get_xttrader_permission(self, mock_service):
-        """测试 get_xttrader 权限检查"""
-        # 先认证 STANDARD 用户
-        mock_service.exposed_authenticate("standard-user", "standard-secret")
-
-        # STANDARD 用户不能调用 get_xttrader
-        with pytest.raises(AuthPermissionError) as exc_info:
-            mock_service.exposed_get_xttrader()
-
-        assert exc_info.value.permission == Permission.TRADE
-
-    def test_get_xttrader_premium_user(self, mock_service):
-        """测试 PREMIUM 用户可调用 get_xttrader"""
-        # 先认证 PREMIUM 用户
-        mock_service.exposed_authenticate("premium-user", "premium-secret")
-
-        # PREMIUM 用户可以调用
-        result = mock_service.exposed_get_xttrader()
-        assert result is not None
-
     def test_create_trader_permission(self, mock_service):
         """测试 create_trader 权限检查"""
         # 先认证 STANDARD 用户
@@ -314,19 +294,22 @@ class TestServiceTradePermission:
         with pytest.raises(AuthPermissionError) as exc_info:
             mock_service.exposed_create_trader()
 
-        assert exc_info.value.permission == Permission.TRADE
+        assert exc_info.value.permission == Permission.TRADE_QUERY
 
     def test_create_trader_premium_user(self, mock_service):
         """测试 PREMIUM 用户可调用 create_trader"""
         # 先认证 PREMIUM 用户
         mock_service.exposed_authenticate("premium-user", "premium-secret")
 
-        # PREMIUM 用户可以调用 (但会因为 mock 而失败，这里只测试权限)
-        # 由于 XtQuantTrader 在 mock 环境下是 MagicMock，调用会成功
+        # PREMIUM 用户可以调用 (权限检查通过)
+        # 在 mock 环境下会因为 xtquant 未安装而抛出 RuntimeError，这是预期的
         try:
             result = mock_service.exposed_create_trader()
         except AuthPermissionError:
             pytest.fail("PREMIUM 用户应该可以调用 create_trader")
+        except RuntimeError as e:
+            # mock 环境下 xtquant 未安装是预期的
+            assert "xtquant" in str(e).lower()
 
 
 class TestPeriodDynamicPermission:
