@@ -176,13 +176,13 @@ from rpyc.utils.helpers import BgServingThread
 
 class RemoteModule:
     """远程模块代理 - 完全透明的动态代理"""
-    
-    def __init__(self, client, module_name):
+
+    def __init__(self, client, module_name, module=None):
         self._client = client
         self._module_name = module_name
-        self._module = None
+        self._module = module  # 支持直接传入对象
         self._logger = get_logger()
-    
+
     def _ensure_module(self):
         if self._module is None:
             self._client._ensure_connected()
@@ -519,7 +519,7 @@ class XtQuantRemote:
 
     def create_trader(self, userdata_path: str = None, session_id: int = None):
         """
-        创建并启动交易实例
+        创建交易实例
 
         Args:
             userdata_path: QMT 客户端 userdata_mini 目录路径
@@ -527,7 +527,7 @@ class XtQuantRemote:
             session_id: 会话ID（可选，默认自动生成时间戳）
 
         Returns:
-            已启动的 XtQuantTrader 实例
+            XtQuantTrader 实例
 
             Example:
             # 方式1：使用环境变量
@@ -538,7 +538,9 @@ class XtQuantRemote:
             trader = xt.create_trader("C:\\QMT\\userdata_mini")
         """
         self._ensure_connected()
-        return self._conn.root.create_trader(userdata_path, session_id)
+        trader = self._conn.root.create_trader(userdata_path, session_id)
+        # 用 RemoteModule 包装，添加日志和反序列化支持
+        return RemoteModule(self, 'xttrader', trader)
 
     def get_all_stocks(self):
         self._ensure_connected()
