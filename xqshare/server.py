@@ -28,9 +28,9 @@ try:
     import xtquant.xttrader as xttrader
     import xtquant.xttype as xttype
     from xtquant.xttrader import XtQuantTrader
-    XQSHARE_AVAILABLE = True
+    XTQUANT_AVAILABLE = True
 except ImportError:
-    XQSHARE_AVAILABLE = False
+    XTQUANT_AVAILABLE = False
     xtdata = None
     xttrader = None
     xttype = None
@@ -390,24 +390,6 @@ class XtQuantService(rpyc.Service):
             self._account_level
         )
 
-    @log_api_call("get_xttrader")
-    def exposed_get_xttrader(self):
-        self._require_auth()
-        # 检查 trade 权限
-        if self._account_level:
-            error = XtQuantService._permission_checker.check_api_permission(
-                self._account_level, "get_xttrader"
-            )
-            if error:
-                logger.warning(f"[权限拒绝] get_xttrader | client={self._client_info} | {error}")
-                raise error
-        return LoggingModuleProxy(
-            self._xttrader, 'xttrader',
-            lambda: self._client_info,
-            XtQuantService._permission_checker,
-            self._account_level
-        )
-
     @log_api_call("get_xttype")
     def exposed_get_xttype(self):
         self._require_auth()
@@ -419,19 +401,52 @@ class XtQuantService(rpyc.Service):
         )
 
     @log_api_call("create_trader")
-    def exposed_create_trader(self):
+    def exposed_create_trader(self, userdata_path: str = None, session_id: int = None):
+        """
+        创建并启动交易实例
+
+        Args:
+            userdata_path: QMT 客户端 userdata_mini 目录路径（可选，可通过环境变量配置）
+            session_id: 会话ID（可选，默认自动生成时间戳）
+
+        Returns:
+            已启动的 XtQuantTrader 实例
+        """
         self._require_auth()
         # 检查 trade 权限
         if self._account_level:
             error = XtQuantService._permission_checker.check_api_permission(
-                self._account_level, "create_trader"
+                self._account_level, "create_xttrader"
             )
             if error:
-                logger.warning(f"[权限拒绝] create_trader | client={self._client_info} | {error}")
+                logger.warning(f"[权限拒绝] create_xttrader | client={self._client_info} | {error}")
                 raise error
-        if not XQSHARE_AVAILABLE:
+        if not XTQUANT_AVAILABLE:
             raise RuntimeError("xtquant 库未安装")
-        return XtQuantTrader()
+
+        # 从环境变量获取默认值
+        if userdata_path is None:
+            userdata_path = os.environ.get("QMT_USERDATA_PATH")
+        if userdata_path is None:
+            raise ValueError("必须提供 userdata_path 参数或设置 QMT_USERDATA_PATH 环境变量")
+
+        # 自动生成 session_id
+        if session_id is None:
+            session_id = int(time.time())
+
+        # 创建并启动 trader
+        trader = XtQuantTrader(userdata_path, session_id)
+        trader.start()
+
+        logger.info(f"[创建Trader] userdata_path={userdata_path} | session_id={session_id}")
+
+        # 用 LoggingProxy 包装 trader，支持日志记录和序列化
+        return LoggingProxy(
+            trader, 'xttrader',
+            lambda: self._client_info,
+            XtQuantService._permission_checker,
+            self._account_level
+        )
 
     # ==================== 辅助接口 ====================
 
@@ -544,7 +559,7 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
     if port is None:
         port = int(os.environ.get("XQSHARE_PORT", "18812"))
     
-    if not XQSHARE_AVAILABLE:
+    if not XTQUANT_AVAILABLE:
         print("错误: xtquant 库未安装，请先安装 xtquant")
         return
     

@@ -77,19 +77,29 @@ def extract_global_args(args_list):
     Returns:
         tuple: (过滤后的参数列表, 提取到的全局参数字典)
     """
+    # 短参数映射：-f -> format, -n -> limit, -o -> output, -v -> verbose
+    SHORT_ARG_MAP = {
+        'f': 'format',
+        'n': 'limit',
+        'o': 'output',
+        'v': 'verbose',
+    }
+
     extracted = {}
     filtered = []
     i = 0
 
     while i < len(args_list):
         arg = args_list[i]
+
+        # 处理长参数 --xxx
         if arg.startswith('--'):
             key = arg[2:].replace('-', '_')
 
             if key in GLOBAL_ARGS:
                 if key in GLOBAL_ARGS_WITH_VALUE:
                     # 带值的参数
-                    if i + 1 < len(args_list) and not args_list[i + 1].startswith('--'):
+                    if i + 1 < len(args_list) and not args_list[i + 1].startswith('-'):
                         extracted[key] = args_list[i + 1]
                         i += 2
                     else:
@@ -102,6 +112,18 @@ def extract_global_args(args_list):
                 else:
                     i += 1
                 continue
+
+        # 处理短参数 -x
+        elif arg.startswith('-') and len(arg) == 2 and arg[1] in SHORT_ARG_MAP:
+            key = SHORT_ARG_MAP[arg[1]]
+
+            if i + 1 < len(args_list) and not args_list[i + 1].startswith('-'):
+                extracted[key] = args_list[i + 1]
+                i += 2
+            else:
+                extracted[key] = True
+                i += 1
+            continue
 
         filtered.append(arg)
         i += 1

@@ -345,7 +345,6 @@ class XtQuantRemote:
         self._account_level = None  # 账号等级
 
         self._xtdata = RemoteModule(self, 'xtdata')
-        self._xttrader = RemoteModule(self, 'xttrader')
         self._xttype = RemoteModule(self, 'xttype')
         self._logger = get_logger()
 
@@ -510,16 +509,31 @@ class XtQuantRemote:
         return self._xtdata
 
     @property
-    def xttrader(self):
-        return self._xttrader
-
-    @property
     def xttype(self):
         return self._xttype
 
-    def create_trader(self):
+    def create_xttrader(self, userdata_path: str = None, session_id: int = None):
+        """
+        创建并启动交易实例
+
+        Args:
+            userdata_path: QMT 客户端 userdata_mini 目录路径
+                          （可选，默认从环境变量 QMT_USERDATA_PATH 读取）
+            session_id: 会话ID（可选，默认自动生成时间戳）
+
+        Returns:
+            已启动的 XtQuantTrader 实例
+
+            Example:
+            # 方式1：使用环境变量
+            export QMT_USERDATA_PATH="C:\\QMT\\userdata_mini"
+            trader = xt.create_trader()
+
+            # 方式2：直接传参
+            trader = xt.create_trader("C:\\QMT\\userdata_mini")
+        """
         self._ensure_connected()
-        return self._conn.root.create_trader()
+        return self._conn.root.create_trader(userdata_path, session_id)
 
     def get_all_stocks(self):
         self._ensure_connected()

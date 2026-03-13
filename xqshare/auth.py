@@ -72,7 +72,6 @@ API_PERMISSIONS: Dict[str, Permission] = {
     "xtdata.subscribe_quote": Permission.TICK,
 
     # ==================== trade 权限 ====================
-    "get_xttrader": Permission.TRADE,
     "create_trader": Permission.TRADE,
 
     # ==================== callback 权限 ====================

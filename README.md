@@ -198,7 +198,10 @@ stocks = xtdata.get_stock_list_in_sector("沪深A股")
 disconnect()
 ```
 
-**核心属性：** `xt.xtdata`（行情）、`xt.xttrader`（交易）、`xt.xttype`（类型）
+**核心属性/方法：**
+- `xt.xtdata` - 行情数据模块
+- `xt.xttype` - 类型定义模块（StockAccount 等）
+- `xt.create_trader()` - 创建交易实例
 
 详细 API 请查看 [xqshare/client.py](xqshare/client.py) 源码。
 
@@ -225,6 +228,28 @@ with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
     # 获取实时行情
     ticks = xt.xtdata.get_full_tick(["000001.SZ"])
     print(ticks)
+```
+
+### 交易功能
+
+```python
+from xqshare import XtQuantRemote
+
+with XtQuantRemote("192.168.1.100", client_secret="my-secret") as xt:
+    # 创建交易实例（已自动 start）
+    # userdata_path 可通过环境变量 QMT_USERDATA_PATH 配置
+    trader = xt.create_trader("C:\\QMT\\userdata_mini")
+
+    # 创建账户对象
+    account = xt.xttype.StockAccount("12345678", "STOCK")
+
+    # 连接交易服务器
+    trader.connect()
+
+    # 查询持仓
+    positions = trader.query_stock_positions(account)
+    for pos in positions:
+        print(f"股票: {pos.stock_code}, 持仓: {pos.volume}")
 ```
 
 **更多示例请查看 [examples/](examples/) 目录：**
