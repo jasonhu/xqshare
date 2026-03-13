@@ -107,11 +107,11 @@ def print_positions_table(positions):
         # 截断股票名称
         stock_name_display = stock_name[:4].ljust(4) if len(stock_name) >= 4 else stock_name.ljust(4)
 
-        # 盈亏符号
-        profit_sign = "+" if profit >= 0 else "-"
-        rate_str = f"+{profit_rate*100:.1f}%" if profit_rate >= 0 else f"{profit_rate*100:.1f}%"
+        # 盈亏格式化（自动带正负号）
+        profit_str = f"{profit:+,.0f}"
+        rate_str = f"{profit_rate*100:+.1f}%"
 
-        print(f"{i:^4} | {stock_code:^10} | {stock_name_display:4} | {volume:>8,} | {can_use:>8,} | {avg_price:>8.3f} | {last_price:>8.3f} | {market_value:>12,.0f} | {profit_sign}{abs(profit):>9,.0f} | {rate_str:>8}")
+        print(f"{i:^4} | {stock_code:^10} | {stock_name_display:4} | {volume:>8,} | {can_use:>8,} | {avg_price:>8.3f} | {last_price:>8.3f} | {market_value:>12,.0f} | {profit_str:>10} | {rate_str:>8}")
 
         total_market_value += market_value
         total_profit += profit
@@ -119,10 +119,10 @@ def print_positions_table(positions):
     print("-" * 108)
 
     # 汇总行
-    profit_sign = "+" if total_profit >= 0 else ""
-    print(f"{'合计':^4} | {'':^10} | {'':^6} | {'':>8} | {'':>8} | {'':>8} | {'':>8} | {total_market_value:>12,.0f} | {profit_sign}{abs(total_profit):>9,.0f} |")
+    total_profit_str = f"{total_profit:+,.0f}"
+    print(f"{'合计':^4} | {'':^10} | {'':^6} | {'':>8} | {'':>8} | {'':>8} | {'':>8} | {total_market_value:>12,.0f} | {total_profit_str:>10} |")
     print("=" * 108)
-    print(f"\n持仓: {len(positions)} 只 | 市值: {total_market_value:,.0f} 元 | 盈亏: {profit_sign}{abs(total_profit):,.0f} 元")
+    print(f"\n持仓: {len(positions)} 只 | 市值: {total_market_value:,.0f} 元 | 盈亏: {total_profit_str} 元")
 
 
 def print_orders_table(orders):
