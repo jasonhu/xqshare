@@ -27,6 +27,7 @@ try:
     import xtquant.xtdata as xtdata
     import xtquant.xttrader as xttrader
     import xtquant.xttype as xttype
+    import xtquant.xtconstant as xtconstant
     from xtquant.xttrader import XtQuantTrader
     XTQUANT_AVAILABLE = True
 except ImportError:
@@ -34,6 +35,7 @@ except ImportError:
     xtdata = None
     xttrader = None
     xttype = None
+    xtconstant = None
     XtQuantTrader = None
 
 
@@ -306,6 +308,7 @@ class XtQuantService(rpyc.Service):
     _xtdata = xtdata
     _xttrader = xttrader
     _xttype = xttype
+    _xtconstant = xtconstant
     _permission_checker = None  # 类级别的权限检查器
 
     def on_connect(self, conn):
@@ -393,12 +396,11 @@ class XtQuantService(rpyc.Service):
     @log_api_call("get_xttype")
     def exposed_get_xttype(self):
         self._require_auth()
-        return LoggingModuleProxy(
-            self._xttype, 'xttype',
-            lambda: self._client_info,
-            XtQuantService._permission_checker,
-            self._account_level
-        )
+        return self._xttype
+
+    def exposed_get_xtconstant(self):
+        self._require_auth()
+        return self._xtconstant
 
     @log_api_call("create_trader")
     def exposed_create_trader(self, userdata_path: str = None, session_id: int = None):
