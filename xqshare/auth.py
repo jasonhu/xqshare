@@ -212,6 +212,9 @@ class PermissionChecker:
             # 如果配置为空，使用默认客户端
             if not self._clients:
                 self._create_default_client()
+            else:
+                import logging
+                logging.info(f"[配置加载] 有效账号数量: {len(self._clients)}")
         except Exception as e:
             # 配置加载失败，使用默认客户端
             import logging
@@ -226,7 +229,7 @@ class PermissionChecker:
             level=AccountLevel.STANDARD
         )
         import logging
-        logging.info(f"使用默认客户端配置: {DEFAULT_CLIENT_ID} (level=standard)")
+        logging.warning(f"[配置加载] 未找到 clients.yaml，启用默认账号: {DEFAULT_CLIENT_ID} (level=standard)")
 
     def check_and_reload_if_changed(self) -> bool:
         """
