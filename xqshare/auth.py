@@ -76,6 +76,11 @@ API_PERMISSIONS: Dict[str, Permission] = {
     # 精确匹配：查询方法需要 TRADE_QUERY
     "create_trader": Permission.TRADE_QUERY,
     "create_xttrader": Permission.TRADE_QUERY,
+    # 生命周期方法
+    "xttrader.start": Permission.TRADE_QUERY,
+    "xttrader.stop": Permission.TRADE_QUERY,
+    "xttrader.connect": Permission.TRADE_QUERY,
+    # 注册和订阅
     "xttrader.register_callback": Permission.TRADE_QUERY,
     "xttrader.subscribe": Permission.TRADE_QUERY,
     "xttrader.unsubscribe": Permission.TRADE_QUERY,
