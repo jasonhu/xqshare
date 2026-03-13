@@ -1,50 +1,69 @@
-# xqshare 服务端客户端配置示例
-# 复制此文件到 ./clients.yaml（服务端运行目录）并修改
+# xqshare 客户端配置示例
+#
+# 复制此文件为 clients.yaml 并修改配置
+# cp clients.yaml.example clients.yaml
+#
+# 配置说明：
+# - secret: 客户端认证密钥
+# - level: 账号等级，决定可访问的 API 权限
+#
+# 权限等级说明：
+# ┌─────────────┬───────────────────────────────────────────────────────────┐
+# │ 等级         │ 权限说明                                                           │
+# ├─────────────┼───────────────────────────────────────────────────────────┤
+# │ free        │ 基础信息 + 日线数据                                                │
+# │ plus        │ 基础信息 + 日线 + 分钟线数据                                        │
+# │ standard    │ 基础信息 + 日线 + 分钟线 + 实时行情 + 回调功能                       │
+# │ premium     │ standard + 交易查询（持仓、资产、委托等）                            │
+# │ enterprise  │ premium + 完整交易（下单、撤单）                                   │
+# └─────────────┴───────────────────────────────────────────────────────────┘
+
+#
+# 安全建议：
+# - 生产环境请使用强密码（建议 32 位以上随机字符串）
+# - 定期更换密钥
+# - 不同客户端使用不同密钥
 
 clients:
-  # 免费用户 - 基础信息 + 日线数据
-  app-free:
-    secret: "your-secret-key-for-free"
+  # ==================== 免费用户 ====================
+  # 权限：基础信息 + 日线数据
+  free-user:
+    secret: "free-secret-change-me"
     level: free
 
-  # 进阶用户 - 基础信息 + 日线数据 + 分钟线数据
-  app-plus:
-    secret: "your-secret-key-for-plus"
+  # ==================== 进阶用户 ====================
+  # 权限：基础信息 + 日线 + 分钟线数据
+  plus-user:
+    secret: "plus-secret-change-me"
     level: plus
 
-  # 标准用户 - 基础信息 + 日线数据 + 分钟线数据 + 实时行情 + 回调功能
-  app-standard:
-    secret: "your-secret-key-for-standard"
+  # ==================== 标准用户 ====================
+  # 权限：基础信息 + 日线 + 分钟线 + 实时行情 + 回调功能
+  standard-user:
+    secret: "standard-secret-change-me"
     level: standard
 
-  # 高级用户 - 全部权限
-  app-premium:
-    secret: "your-secret-key-for-premium"
+  # ==================== 高级用户 ====================
+  # 权限：standard + 交易查询（持仓、资产、委托等）
+  # 注意：不能下单、撤单
+  premium-user:
+    secret: "premium-secret-change-me"
     level: premium
 
-  # 企业用户 - 全部权限 + 优先支持
-  app-enterprise:
-    secret: "your-secret-key-for-enterprise"
+  # ==================== 企业用户 ====================
+  # 权限：premium + 完整交易（下单、撤单）
+  # 拥有所有权限
+  enterprise-user:
+    secret: "enterprise-secret-change-me"
     level: enterprise
 
-# 权限等级说明:
-# ┌───────────┬─────────────────────────────────────────────────────────────┐
-# │ 等级      │ 权限范围                                                    │
-# ├───────────┼─────────────────────────────────────────────────────────────┤
-# │ free      │ basic + daily (基础信息、日线数据)                          │
-# │ plus      │ basic + daily + minute (增加分钟线数据)                    │
-# │ standard  │ basic + daily + minute + tick + callback (增加实时行情、回调) │
-# │ premium   │ 全部权限 (增加交易功能)                                    │
-# │ enterprise│ 全部权限 + 优先支持                                        │
-# └───────────┴─────────────────────────────────────────────────────────────┘
+  # ==================== 自定义示例 ====================
+  # 示例：内部测试账号
+  # internal-dev:
+  #   secret: "dev-only-secret"
+  #   level: enterprise
 
-# 权限对应的 API:
-# - basic:  get_stock_list_in_sector, get_index_list, get_instrument_detail, get_divid_factors, get_sector_list
-# - daily:  get_market_data, get_market_data_ex, get_full_kline, download_history_data* (period=1d/1w/1mon/1q/1hy/1y)
-# - minute: get_market_data, get_market_data_ex, get_full_kline, download_history_data* (period=5m/15m/30m/1h)
-#           get_financial_data, download_financial_data, download_financial_data2
-# - tick:   get_full_tick, subscribe_quote, get_market_data*, get_full_kline (period=tick/1m)
-# - trade:  get_xttrader, create_trader
-# - callback: subscribe_*, test_async_callback
-#
-# 注意: 未配置权限的 API，只有 STANDARD 及以上级别可以调用，FREE/PLUS 用户会被拒绝
+  # 示例：只读分析账号
+  # readonly-analyst:
+  #   secret: "analyst-secret"
+  #   level: standard
