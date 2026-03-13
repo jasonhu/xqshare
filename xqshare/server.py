@@ -231,6 +231,8 @@ def _serialize_for_transfer(result):
             json_str = json.dumps(result, ensure_ascii=False, default=str)
             return {SERIALIZED_MARKER: "json", "data": json_str}
         except (TypeError, ValueError):
+            # 无法 JSON 序列化，检查是否需要包装列表元素
+            # 对于包含复杂对象的列表，不进行序列化，让 RPyC 原样传输
             pass
 
     # 其他类型原样返回
@@ -279,6 +281,21 @@ class LoggingProxy:
                     if not isinstance(result, (int, float, str, bool, list, dict, tuple, type(None), bytes)):
                         if not result.__class__.__module__.startswith('builtins'):
                             return LoggingProxy(result, full_name, get_client_info, permission_checker, account_level)
+
+                # 处理列表：检查是否包含复杂对象
+                if isinstance(result, list):
+                    wrapped_list = []
+                    has_complex_obj = False
+                    for item in result:
+                        if item is not None and hasattr(item, '__class__'):
+                            if not isinstance(item, (int, float, str, bool, dict, tuple, type(None), bytes)):
+                                if not item.__class__.__module__.startswith('builtins'):
+                                    wrapped_list.append(LoggingProxy(item, full_name, get_client_info, permission_checker, account_level))
+                                    has_complex_obj = True
+                                    continue
+                        wrapped_list.append(item)
+                    if has_complex_obj:
+                        return wrapped_list
 
                 # 序列化传输优化：将列表/字典/DataFrame 序列化以减少远程调用
                 return _serialize_for_transfer(result)
