@@ -338,14 +338,20 @@ class XtQuantService(rpyc.Service):
         client_info = getattr(self, '_client_info', 'unknown')
         logger.info(f"[断开] 客户端离开: {client_info}")
 
-    def _require_auth(self):
-        """检查认证状态，未认证则断开连接"""
-        if not self._authenticated:
-            logger.warning(f"[未授权] 未认证的访问尝试，断开连接: {self._client_info}")
+    def _delayed_disconnect(self, delay: float = 0.5):
+        """延迟断开连接，确保异常能传输到客户端"""
+        import threading
+        def _close():
             try:
                 self._conn.close()
             except:
                 pass
+        threading.Timer(delay, _close).start()
+
+    def _require_auth(self):
+        """检查认证状态，未认证则抛出异常"""
+        if not self._authenticated:
+            logger.warning(f"[未授权] 未认证的访问尝试: {self._client_info}")
             raise AuthError("未授权访问，请先认证")
 
     # ==================== 认证接口 ====================
@@ -361,11 +367,8 @@ class XtQuantService(rpyc.Service):
         valid, account_level = checker.verify_secret(client_id, client_secret)
 
         if not valid:
-            logger.warning(f"[认证失败] client_id={client_id}，断开连接")
-            try:
-                self._conn.close()
-            except:
-                pass
+            logger.warning(f"[认证失败] client_id={client_id}")
+            self._delayed_disconnect()
             raise AuthError("认证失败：无效的客户端凭证")
 
         self._authenticated = True
