@@ -574,8 +574,29 @@ def create_ssl_context(certfile=None, keyfile=None):
     return ctx
 
 
-def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfile=None, log_level="INFO"):
-    """启动服务"""
+def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfile=None, log_level="INFO", env_file=".env"):
+    """启动服务
+
+    Args:
+        host: 监听地址
+        port: 监听端口
+        use_ssl: 是否启用 SSL
+        certfile: SSL 证书文件
+        keyfile: SSL 密钥文件
+        log_level: 日志级别
+        env_file: 环境变量文件路径（默认 .env）
+    """
+    # 加载 .env 文件中的环境变量
+    if env_file:
+        try:
+            from dotenv import load_dotenv
+            env_path = os.path.join(os.getcwd(), env_file)
+            if os.path.exists(env_path):
+                load_dotenv(env_path)
+                print(f"已加载环境变量文件: {env_path}")
+        except ImportError:
+            pass  # dotenv 未安装，忽略
+
     if port is None:
         port = int(os.environ.get("XQSHARE_PORT", "18812"))
 
