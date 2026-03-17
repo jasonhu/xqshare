@@ -686,24 +686,44 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
         raise
 
 
-if __name__ == "__main__":
+def main():
+    """命令行入口函数"""
     import argparse
-    
-    parser = argparse.ArgumentParser(description="XtQuant Share (xqshare) 服务")
-    parser.add_argument("--host", default="0.0.0.0", help="监听地址")
+
+    parser = argparse.ArgumentParser(
+        description="XtQuant Share (xqshare) 服务",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例:
+  xqshare-server                    # 使用默认配置启动
+  xqshare-server --port 18813       # 指定端口
+  xqshare-server --ssl --cert cert.pem --key key.pem  # 启用 SSL
+
+环境变量:
+  XQSHARE_PORT      服务端口 (默认: 18812)
+  QMT_USERDATA_PATH QMT userdata_mini 目录路径
+        """
+    )
+    parser.add_argument("--host", default="0.0.0.0", help="监听地址 (默认: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=None, help="监听端口 (默认: 18812 或 XQSHARE_PORT)")
     parser.add_argument("--ssl", action="store_true", help="启用 SSL 加密")
     parser.add_argument("--cert", help="SSL 证书文件")
     parser.add_argument("--key", help="SSL 私钥文件")
-    parser.add_argument("--log-level", default="INFO", help="日志级别")
-    
+    parser.add_argument("--log-level", default="INFO", help="日志级别 (默认: INFO)")
+    parser.add_argument("--env-file", default=".env", help="环境变量文件 (默认: .env)")
+
     args = parser.parse_args()
-    
+
     start_server(
         host=args.host,
         port=args.port,
         use_ssl=args.ssl,
         certfile=args.cert,
         keyfile=args.key,
-        log_level=args.log_level
+        log_level=args.log_level,
+        env_file=args.env_file
     )
+
+
+if __name__ == "__main__":
+    main()
