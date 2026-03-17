@@ -313,17 +313,14 @@ class XtQuantRemote:
         max_retries=5,
         heartbeat_interval=30,
         log_level="INFO",
-        env_file=".env",
+        env_file=None,
     ):
-        # 加载 .env 文件中的环境变量
-        if env_file:
-            try:
-                from dotenv import load_dotenv
-                env_path = os.path.join(os.getcwd(), env_file)
-                if os.path.exists(env_path):
-                    load_dotenv(env_path)
-            except ImportError:
-                pass  # dotenv 未安装，忽略
+        # 加载环境变量文件（None 时自动查找 .env）
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(env_file)
+        except ImportError:
+            pass
 
         # 支持环境变量：显式参数 > 环境变量 > 默认值
         if host is None:
