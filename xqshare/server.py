@@ -38,6 +38,14 @@ except ImportError:
     xtconstant = None
     XtQuantTrader = None
 
+# xtview 模块单独导入（某些版本可能不存在）
+try:
+    import xtquant.xtview as xtview
+    XTVIEW_AVAILABLE = True
+except ImportError:
+    xtview = None
+    XTVIEW_AVAILABLE = False
+
 
 # ==================== 日志配置 ====================
 
@@ -326,6 +334,7 @@ class XtQuantService(rpyc.Service):
     _xttrader = xttrader
     _xttype = xttype
     _xtconstant = xtconstant
+    _xtview = xtview
     _permission_checker = None  # 类级别的权限检查器
 
     def on_connect(self, conn):
@@ -420,6 +429,18 @@ class XtQuantService(rpyc.Service):
     def exposed_get_xtconstant(self):
         self._require_auth()
         return self._xtconstant
+
+    @log_api_call("get_xtview")
+    def exposed_get_xtview(self):
+        self._require_auth()
+        if self._xtview is None:
+            raise RuntimeError("xtview 模块不可用，请检查 xtquant 版本是否支持")
+        return LoggingModuleProxy(
+            self._xtview, 'xtview',
+            lambda: self._client_info,
+            XtQuantService._permission_checker,
+            self._account_level
+        )
 
     @log_api_call("create_trader")
     def exposed_create_trader(self, userdata_path: str = None, session_id: int = None):

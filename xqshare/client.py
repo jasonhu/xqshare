@@ -355,6 +355,7 @@ class XtQuantRemote:
         self._xtdata = RemoteModule(self, 'xtdata')
         self._xttype = RemoteModule(self, 'xttype')
         self._xtconstant = RemoteModule(self, 'xtconstant')
+        self._xtview = RemoteModule(self, 'xtview')
         self._logger = get_logger()
 
         self._connect()
@@ -525,6 +526,10 @@ class XtQuantRemote:
     def xtconstant(self):
         return self._xtconstant
 
+    @property
+    def xtview(self):
+        return self._xtview
+
     def create_trader(self, userdata_path: str = None, session_id: int = None):
         """
         创建交易实例
@@ -652,3 +657,4 @@ class _ModuleProxy:
 xtdata = _ModuleProxy('xtdata')
 xttrader = _ModuleProxy('xttrader')
 xttype = _ModuleProxy('xttype')
+xtview = _ModuleProxy('xtview')
