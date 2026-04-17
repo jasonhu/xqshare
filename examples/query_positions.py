@@ -94,10 +94,10 @@ def print_positions_table(positions):
     for i, pos in enumerate(positions, 1):
         stock_code = getattr(pos, 'stock_code', 'N/A')
         stock_name = getattr(pos, 'instrument_name', '') or ''
-        volume = getattr(pos, 'volume', 0) or 0
+        volume = pos.volume or 0
         can_use = getattr(pos, 'can_use_volume', 0) or 0
         avg_price = getattr(pos, 'open_price', 0) or getattr(pos, 'avg_price', 0) or 0
-        last_price = getattr(pos, 'last_price', 0) or 0
+        last_price = pos.last_price or 0
         market_value = round(float(getattr(pos, 'market_value', 0) or 0), 2)
         # 计算盈亏（XtPosition 没有 float_profit 字段）
         cost = volume * avg_price
