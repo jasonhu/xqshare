@@ -585,16 +585,18 @@ class XtQuantRemote:
     
     def close(self):
         self._stop_heartbeat_thread()
-        if self._bg_thread:
-            self._bg_thread.stop()
-            self._bg_thread = None
         self._connected = False
+        # 先关闭连接：使 BgServingThread 阻塞中的 poll/recv 立即返回，
+        # 避免回调洪峰期间 stop() 的 join 挂起导致进程无法退出
         if self._conn:
             try:
                 self._conn.close()
             except:
                 pass
-        self._conn = None
+            self._conn = None
+        if self._bg_thread:
+            self._bg_thread.stop()
+            self._bg_thread = None
         self._logger.info("连接已关闭")
     
     def __enter__(self):
