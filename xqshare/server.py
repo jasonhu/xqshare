@@ -10,6 +10,7 @@ import ssl
 import logging
 import functools
 import json
+import threading
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -354,6 +355,8 @@ class XtQuantService(rpyc.Service):
         self._client_id = None
         self._account_level = AccountLevel.FREE  # 默认为免费等级
         self._subscriptions = set()  # 本连接的 xtdata 订阅序号，断开时自动退订
+        self._sub_lock = threading.Lock()
+        self._disposed = False  # 连接已断开标记：之后返回的订阅立即退订
         # 权限检查器在服务启动时已加载
         # 兼容不同版本 rpyc：尝试获取客户端地址
         try:
@@ -375,31 +378,42 @@ class XtQuantService(rpyc.Service):
     def on_disconnect(self, conn):
         client_info = getattr(self, '_client_info', 'unknown')
         logger.info(f"[断开] 客户端离开: {client_info}")
-        self._cleanup_subscriptions()
+        # 先标记断开并取出遗留订阅（锁内），退订动作在锁外执行。
+        # 标记之后返回的在途订阅由 _track_subscription 立即退订，消除竞态。
+        with self._sub_lock:
+            self._disposed = True
+            leftover = list(self._subscriptions)
+            self._subscriptions.clear()
+        self._unsubscribe_seqs(leftover)
 
     def _track_subscription(self, op: str, seq: int):
-        """记录/移除本连接的订阅序号（由 LoggingProxy 钩子调用）"""
-        if op == 'add':
-            self._subscriptions.add(seq)
-        else:
-            self._subscriptions.discard(seq)
+        """记录/移除本连接的订阅序号（由 LoggingProxy 钩子调用）
 
-    def _cleanup_subscriptions(self):
-        """退订本连接遗留的 xtdata 订阅
+        竞态处理：subscribe 调用在连接断开期间才返回时（客户端已被强杀），
+        直接退订该序号，避免订阅泄漏为死回调。
+        """
+        with self._sub_lock:
+            if op == 'discard':
+                self._subscriptions.discard(seq)
+                return
+            if not self._disposed:
+                self._subscriptions.add(seq)
+                return
+        self._unsubscribe_seqs([seq])
+        logger.info(f"[清理] 退订在途订阅（连接已断开）: seq={seq} | client={self._client_info}")
+
+    def _unsubscribe_seqs(self, seqs: list):
+        """退订指定的 xtdata 订阅序号列表
 
         客户端异常退出（强杀、断网）时订阅残留在 xtdata 中，
         行情推送会持续调用已失效的 netref 回调，污染整个行情分发链路。
         """
-        leftover = getattr(self, '_subscriptions', None)
-        if not leftover:
-            return
-        for seq in list(leftover):
+        for seq in seqs:
             try:
                 self._xtdata.unsubscribe_quote(seq)
                 logger.info(f"[清理] 自动退订遗留订阅: seq={seq} | client={self._client_info}")
             except Exception as e:
                 logger.warning(f"[清理] 退订失败: seq={seq} | client={self._client_info} | {e}")
-        leftover.clear()
 
     def _delayed_disconnect(self, delay: float = 0.5):
         """延迟断开连接，确保异常能传输到客户端"""
